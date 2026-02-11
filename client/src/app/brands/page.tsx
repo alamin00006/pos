@@ -1,7 +1,7 @@
 "use client";
 
-import ProtectedRoute from "@/components/auth/ProtectedRoute.tsx";
-import Brands from "@/pages/Brands";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import Brands from "@/pages/brands/Brands";
 
 export default function Page() {
   return (

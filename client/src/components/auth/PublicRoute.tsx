@@ -8,14 +8,18 @@ import { useAuth } from "@/contexts/AuthContext";
  * PublicRoute: If user is already logged in, send them to /dashboard.
  * Otherwise render children (e.g., login page).
  */
-export default function PublicRoute({ children }: { children: React.ReactNode }) {
+export default function PublicRoute({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (isAuthenticated) router.replace("/dashboard");
-  }, [isAuthenticated, router]);
+  // useEffect(() => {
+  //   if (isAuthenticated) router.replace("/dashboard");
+  // }, [isAuthenticated, router]);
 
-  if (isAuthenticated) return null;
+  // if (isAuthenticated) return null;
   return <>{children}</>;
 }

@@ -1,15 +1,29 @@
+import Providers from "@/redux/provider";
 import "./globals.css";
-import Providers from "./providers";
+import ThemProviders from "./providers";
+import { Toaster } from "react-hot-toast";
+// import { Toaster } from "@/components/ui/toaster";
 
 export const metadata = {
   title: "POS",
   description: "Converted from Vite to Next.js (App Router).",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
-      <body><Providers>{children}</Providers></body>
+      <body>
+        <Providers>
+          <ThemProviders>{children}</ThemProviders>
+        </Providers>
+        {/* 
+        <Toaster /> */}
+        <Toaster position="top-right" reverseOrder={false} />
+      </body>
     </html>
   );
 }

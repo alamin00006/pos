@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useTheme } from "next-themes";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,8 @@ import { Settings as SettingsIcon } from "lucide-react";
 const Settings = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("settings");
+  const { resolvedTheme, setTheme } = useTheme();
+  const [primaryColor, setPrimaryColor] = useState("#2cc9b3");
 
   const [settings, setSettings] = useState({
     // Company Details
@@ -35,10 +38,50 @@ const Settings = () => {
     barcodeType: "single",
 
     // Other Settings
-    darkMode: false,
     lowStockQuantity: "10",
     currency: "Tk",
   });
+
+  const primaryStorageKey = "ui:primary-color";
+
+  const applyPrimaryColor = (hex: string) => {
+    const hsl = hexToHsl(hex);
+    const root = document.documentElement;
+    root.style.setProperty("--primary", hsl);
+    root.style.setProperty("--ring", hsl);
+    root.style.setProperty("--sidebar-primary", hsl);
+    root.style.setProperty(
+      "--primary-foreground",
+      hslForeground(hex),
+    );
+    root.style.setProperty(
+      "--sidebar-primary-foreground",
+      hslForeground(hex),
+    );
+  };
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(primaryStorageKey);
+    if (stored && isHexColor(stored)) {
+      setPrimaryColor(stored);
+      applyPrimaryColor(stored);
+      return;
+    }
+    if (stored) {
+      window.localStorage.removeItem(primaryStorageKey);
+    }
+    applyPrimaryColor(primaryColor);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!isHexColor(primaryColor)) {
+      return;
+    }
+    window.localStorage.setItem(primaryStorageKey, primaryColor);
+  }, [primaryColor]);
+
+  const primaryPreview = useMemo(() => primaryColor, [primaryColor]);
 
   const handleSave = () => {
     toast({
@@ -243,12 +286,40 @@ const Settings = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="flex items-center gap-3">
                     <Switch
-                      checked={settings.darkMode}
+                      checked={resolvedTheme === "dark"}
                       onCheckedChange={(checked) =>
-                        setSettings({ ...settings, darkMode: checked })
+                        setTheme(checked ? "dark" : "light")
                       }
                     />
                     <Label>Dark Mode</Label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">
+                      Primary Color
+                    </Label>
+                    <div className="flex items-center gap-3">
+                      <Input
+                        type="color"
+                        value={primaryPreview}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setPrimaryColor(value);
+                          applyPrimaryColor(value);
+                        }}
+                        className="h-10 w-14 p-1"
+                      />
+                      <Input
+                        value={primaryPreview}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setPrimaryColor(value);
+                          if (isHexColor(value)) {
+                            applyPrimaryColor(value);
+                          }
+                        }}
+                        placeholder="#2cc9b3"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm text-muted-foreground">
@@ -301,3 +372,49 @@ const Settings = () => {
 };
 
 export default Settings;
+
+const isHexColor = (value: string) =>
+  /^#([0-9a-fA-F]{6})$/.test(value);
+
+const hexToHsl = (hex: string) => {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.slice(0, 2), 16) / 255;
+  const g = parseInt(clean.slice(2, 4), 16) / 255;
+  const b = parseInt(clean.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      default:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+
+  const hDeg = Math.round(h * 360);
+  const sPct = Math.round(s * 100);
+  const lPct = Math.round(l * 100);
+  return `${hDeg} ${sPct}% ${lPct}%`;
+};
+
+const hslForeground = (hex: string) => {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.slice(0, 2), 16) / 255;
+  const g = parseInt(clean.slice(2, 4), 16) / 255;
+  const b = parseInt(clean.slice(4, 6), 16) / 255;
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 0.5 ? "222 47% 11%" : "0 0% 100%";
+};
