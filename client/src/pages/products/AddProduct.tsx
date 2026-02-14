@@ -24,10 +24,11 @@ import AddBrandModal from "@/components/AddBrandModal";
 import RichTextEditor from "@/components/RichTextEditor";
 
 import { useGetCategoriesQuery } from "@/redux/api/categoriesApi";
-import { useGetSubcategoriesQuery } from "@/redux/api/subcategoriesApi";
 import { useGetBrandsQuery } from "@/redux/api/brandsApi";
-import { useGetUnitsQuery } from "@/redux/api/unitsApi";
+
 import { useCreateProductMutation } from "@/redux/api/productsApi";
+import { useGetSubcategoriesQuery } from "@/redux/api/subcategoriesApi";
+import { useGetUnitsQuery } from "@/redux/api/unitsApi";
 
 type SelectOption = { id: string; name: string };
 
@@ -44,10 +45,6 @@ const AddProduct = () => {
   const [showSubcategoryModal, setShowSubcategoryModal] = useState(false);
   const [showBrandModal, setShowBrandModal] = useState(false);
 
-  // -----------------------------
-  // ✅ Fetch dropdown data
-  // (আপনার API pagination অনুযায়ী limit বাড়াতে পারেন)
-  // -----------------------------
   const { data: categoriesRes, isLoading: categoriesLoading } =
     useGetCategoriesQuery({ page: 1, limit: 500 });
 
@@ -64,12 +61,13 @@ const AddProduct = () => {
     limit: 500,
   });
 
-  const categories: SelectOption[] = categoriesRes?.data?.data ?? [];
+  const categories: SelectOption[] = categoriesRes?.data ?? [];
   const subcategories: (SelectOption & { categoryId?: string | null })[] =
     subcategoriesRes?.data?.data ?? [];
-  const brands: SelectOption[] = brandsRes?.data?.data ?? [];
-  const units: SelectOption[] = unitsRes?.data?.data ?? [];
+  const brands: SelectOption[] = brandsRes?.data ?? [];
+  const units: any[] = unitsRes?.data ?? [];
 
+  console.log(brands);
   // -----------------------------
   // Mutations
   // -----------------------------

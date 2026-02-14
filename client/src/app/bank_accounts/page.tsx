@@ -8,7 +8,7 @@ export default function Page() {
   const pathName = usePathname();
   console.log(pathName);
   return (
-    <ProtectedRoute requiredPermissions={["bank_accounts"]}>
+    <ProtectedRoute requiredPermissions={["add_bank_account"]}>
       <BankAccounts />
     </ProtectedRoute>
   );
