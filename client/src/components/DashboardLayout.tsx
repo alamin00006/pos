@@ -95,7 +95,7 @@ const menuSections: MenuSection[] = [
       {
         icon: Landmark,
         label: "Bank Accounts",
-        path: "/bank-accounts",
+        path: "/bank_accounts",
         permissionKey: "bank_account_list",
       },
       {

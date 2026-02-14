@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "@/lib/router";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -17,10 +17,24 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Save, Plus } from "lucide-react";
+
 import AddCategoryModal from "@/components/AddCategoryModal";
 import AddSubcategoryModal from "@/components/AddSubcategoryModal";
 import AddBrandModal from "@/components/AddBrandModal";
 import RichTextEditor from "@/components/RichTextEditor";
+
+import { useGetCategoriesQuery } from "@/redux/api/categoriesApi";
+import { useGetSubcategoriesQuery } from "@/redux/api/subcategoriesApi";
+import { useGetBrandsQuery } from "@/redux/api/brandsApi";
+import { useGetUnitsQuery } from "@/redux/api/unitsApi";
+import { useCreateProductMutation } from "@/redux/api/productsApi";
+
+type SelectOption = { id: string; name: string };
+
+const toNum = (v: string) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
 
 const AddProduct = () => {
   const navigate = useNavigate();
@@ -30,100 +44,187 @@ const AddProduct = () => {
   const [showSubcategoryModal, setShowSubcategoryModal] = useState(false);
   const [showBrandModal, setShowBrandModal] = useState(false);
 
-  const [categories, setCategories] = useState([
-    { value: "grocery", label: "Grocery" },
-    { value: "dairy", label: "Dairy" },
-    { value: "bakery", label: "Bakery" },
-    { value: "snacks", label: "Snacks" },
-    { value: "beverages", label: "Beverages" },
-    { value: "household", label: "Household" },
-  ]);
+  // -----------------------------
+  // ✅ Fetch dropdown data
+  // (আপনার API pagination অনুযায়ী limit বাড়াতে পারেন)
+  // -----------------------------
+  const { data: categoriesRes, isLoading: categoriesLoading } =
+    useGetCategoriesQuery({ page: 1, limit: 500 });
 
-  const [subcategories, setSubcategories] = useState([
-    { value: "rice", label: "Rice", categoryId: "grocery" },
-    { value: "flour", label: "Flour", categoryId: "grocery" },
-    { value: "oil", label: "Cooking Oil", categoryId: "grocery" },
-    { value: "milk", label: "Milk", categoryId: "dairy" },
-    { value: "cheese", label: "Cheese", categoryId: "dairy" },
-    { value: "bread", label: "Bread", categoryId: "bakery" },
-    { value: "cookies", label: "Cookies", categoryId: "snacks" },
-    { value: "chips", label: "Chips", categoryId: "snacks" },
-    { value: "juice", label: "Juice", categoryId: "beverages" },
-    { value: "soda", label: "Soda", categoryId: "beverages" },
-  ]);
+  const { data: subcategoriesRes, isLoading: subcategoriesLoading } =
+    useGetSubcategoriesQuery({ page: 1, limit: 500 });
 
-  const [brands, setBrands] = useState([
-    { value: "brand1", label: "Brand 1" },
-    { value: "brand2", label: "Brand 2" },
-    { value: "brand3", label: "Brand 3" },
-  ]);
-
-  const [formData, setFormData] = useState({
-    productName: "",
-    productCode: "",
-    category: "",
-    subcategory: "",
-    brand: "",
-    mainUnit: "",
-    subUnit: "",
-    openingStock: "",
-    salePrice: "",
-    purchaseCost: "",
-    productDetails: "",
-    productImage: null as File | null,
+  const { data: brandsRes, isLoading: brandsLoading } = useGetBrandsQuery({
+    page: 1,
+    limit: 500,
   });
 
-  // Filter subcategories based on selected category
-  const filteredSubcategories = subcategories.filter(
-    (sub) => sub.categoryId === formData.category
-  );
+  const { data: unitsRes, isLoading: unitsLoading } = useGetUnitsQuery({
+    page: 1,
+    limit: 500,
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast({
-      title: "Product Added",
-      description: `${formData.productName} has been added successfully.`,
-    });
-    navigate("/products");
+  const categories: SelectOption[] = categoriesRes?.data?.data ?? [];
+  const subcategories: (SelectOption & { categoryId?: string | null })[] =
+    subcategoriesRes?.data?.data ?? [];
+  const brands: SelectOption[] = brandsRes?.data?.data ?? [];
+  const units: SelectOption[] = unitsRes?.data?.data ?? [];
+
+  // -----------------------------
+  // Mutations
+  // -----------------------------
+  const [createProduct, { isLoading: creating }] = useCreateProductMutation();
+
+  const [formData, setFormData] = useState({
+    name: "",
+    productCode: "",
+    barcode: "",
+    description: "",
+
+    categoryId: "",
+    subcategoryId: "",
+    brandId: "",
+    unitId: "",
+
+    costPrice: "",
+    sellPrice: "",
+    alertQuantity: "10",
+
+    openingStock: "",
+
+    imageFile: null as File | null,
+  });
+
+  // ✅ Filter subcategories based on categoryId
+  const filteredSubcategories = useMemo(() => {
+    if (!formData.categoryId) return [];
+    return subcategories.filter((s) => s.categoryId === formData.categoryId);
+  }, [subcategories, formData.categoryId]);
+
+  const handleChange = (field: keyof typeof formData, value: any) => {
+    if (field === "categoryId") {
+      setFormData((prev) => ({
+        ...prev,
+        categoryId: value,
+        subcategoryId: "", // reset subcategory
+      }));
+      return;
+    }
+
+    if (field === "imageFile") {
+      setFormData((prev) => ({ ...prev, imageFile: value as File | null }));
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleChange = (field: string, value: string | File | null) => {
-    if (field === "category" && typeof value === "string") {
-      setFormData((prev) => ({ ...prev, category: value, subcategory: "" }));
-    } else if (field === "productImage") {
-      setFormData((prev) => ({ ...prev, productImage: value as File | null }));
-    } else {
-      setFormData((prev) => ({ ...prev, [field]: value as string }));
+  // -----------------------------
+  // ✅ Submit
+  // -----------------------------
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Basic validation
+    if (!formData.name.trim()) {
+      toast({ title: "Name required", description: "Product name দিন।" });
+      return;
+    }
+    if (!formData.productCode.trim()) {
+      toast({
+        title: "Product code required",
+        description: "Product code দিন।",
+      });
+      return;
+    }
+
+    try {
+      // ✅ Optional: upload image first -> get url
+      // let imageUrl: string | undefined = undefined;
+      // if (formData.imageFile) {
+      //   const fd = new FormData();
+      //   fd.append("file", formData.imageFile);
+      //   const uploadRes = await uploadFile(fd).unwrap(); // ApiResponse<{ url: string }>
+      //   imageUrl = uploadRes.data.url;
+      // }
+
+      const payload = {
+        name: formData.name.trim(),
+        productCode: formData.productCode.trim(),
+        barcode: formData.barcode.trim() ? formData.barcode.trim() : undefined,
+        description: formData.description || undefined,
+
+        costPrice: toNum(formData.costPrice),
+        sellPrice: toNum(formData.sellPrice),
+        alertQuantity: Math.max(
+          0,
+          parseInt(formData.alertQuantity || "10", 10) || 10,
+        ),
+
+        categoryId: formData.categoryId || undefined,
+        subcategoryId: formData.subcategoryId || undefined,
+        brandId: formData.brandId || undefined,
+        unitId: formData.unitId || undefined,
+
+        // image: imageUrl, // optional
+      };
+
+      const created = await createProduct(payload as any).unwrap();
+
+      // ✅ Optional: opening stock -> stock ledger entry
+      // const openingQty = parseInt(formData.openingStock || "0", 10) || 0;
+      // if (openingQty > 0) {
+      //   await createOpeningStock({
+      //     productId: created.data.id,
+      //     quantity: openingQty,
+      //     note: "Opening stock",
+      //   }).unwrap();
+      // }
+
+      toast({
+        title: "Product Added",
+        description: `${created.data.name} added successfully.`,
+      });
+
+      navigate("/products");
+    } catch (err: any) {
+      const msg =
+        err?.data?.message ||
+        err?.message ||
+        "Something went wrong while creating product.";
+      toast({ title: "Failed", description: msg, variant: "destructive" });
     }
   };
 
-  const handleCategoryAdded = (category: { name: string; code: string }) => {
-    const newCategory = {
-      value: category.code || category.name.toLowerCase().replace(/\s+/g, "-"),
-      label: category.name,
-    };
-    setCategories((prev) => [...prev, newCategory]);
-    setFormData((prev) => ({ ...prev, category: newCategory.value, subcategory: "" }));
+  // -----------------------------
+  // ✅ Modal callbacks (আপনার modals যেভাবে return দেয় সেভাবে adjust)
+  // -----------------------------
+  const handleCategoryAdded = (category: { id: string; name: string }) => {
+    setFormData((prev) => ({
+      ...prev,
+      categoryId: category.id,
+      subcategoryId: "",
+    }));
   };
 
-  const handleSubcategoryAdded = (subcategory: { name: string; code: string; categoryId: string }) => {
-    const newSubcategory = {
-      value: subcategory.code || subcategory.name.toLowerCase().replace(/\s+/g, "-"),
-      label: subcategory.name,
-      categoryId: subcategory.categoryId,
-    };
-    setSubcategories((prev) => [...prev, newSubcategory]);
-    setFormData((prev) => ({ ...prev, subcategory: newSubcategory.value }));
+  const handleSubcategoryAdded = (subcategory: {
+    id: string;
+    name: string;
+    categoryId: string;
+  }) => {
+    setFormData((prev) => ({
+      ...prev,
+      categoryId: subcategory.categoryId || prev.categoryId,
+      subcategoryId: subcategory.id,
+    }));
   };
 
-  const handleBrandAdded = (brand: { name: string; code: string }) => {
-    const newBrand = {
-      value: brand.code || brand.name.toLowerCase().replace(/\s+/g, "-"),
-      label: brand.name,
-    };
-    setBrands((prev) => [...prev, newBrand]);
-    setFormData((prev) => ({ ...prev, brand: newBrand.value }));
+  const handleBrandAdded = (brand: { id: string; name: string }) => {
+    setFormData((prev) => ({ ...prev, brandId: brand.id }));
   };
+
+  const isAnyLoading =
+    categoriesLoading || subcategoriesLoading || brandsLoading || unitsLoading;
 
   return (
     <DashboardLayout title="New Product">
@@ -148,54 +249,79 @@ const AddProduct = () => {
           <Card>
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold mb-6">New Product</h3>
-              
+
+              {isAnyLoading && (
+                <p className="text-sm text-muted-foreground mb-4">
+                  Loading dropdown data...
+                </p>
+              )}
+
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Product Name */}
                 <div className="space-y-2">
-                  <Label htmlFor="productName">
+                  <Label htmlFor="name">
                     Product Name<span className="text-destructive">*</span>
                   </Label>
                   <Input
-                    id="productName"
+                    id="name"
                     placeholder="Enter Product Name.."
-                    value={formData.productName}
-                    onChange={(e) => handleChange("productName", e.target.value)}
+                    value={formData.name}
+                    onChange={(e) => handleChange("name", e.target.value)}
                     required
                   />
                 </div>
 
                 {/* Product Code */}
                 <div className="space-y-2">
-                  <Label htmlFor="productCode">Product Code</Label>
+                  <Label htmlFor="productCode">
+                    Product Code<span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     id="productCode"
                     placeholder="Enter Product Code.."
                     value={formData.productCode}
-                    onChange={(e) => handleChange("productCode", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("productCode", e.target.value)
+                    }
+                    required
                   />
                 </div>
 
-                {/* Category with Add Button */}
+                {/* Barcode */}
                 <div className="space-y-2">
-                  <Label htmlFor="category">
+                  <Label htmlFor="barcode">Barcode</Label>
+                  <Input
+                    id="barcode"
+                    placeholder="Enter barcode (optional)"
+                    value={formData.barcode}
+                    onChange={(e) => handleChange("barcode", e.target.value)}
+                  />
+                </div>
+
+                {/* Category */}
+                <div className="space-y-2">
+                  <Label htmlFor="categoryId">
                     Category<span className="text-destructive">*</span>
                   </Label>
                   <div className="flex gap-3">
                     <Select
-                      value={formData.category}
-                      onValueChange={(value) => handleChange("category", value)}
+                      value={formData.categoryId}
+                      onValueChange={(value) =>
+                        handleChange("categoryId", value)
+                      }
                     >
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Search Categories" />
+                        <SelectValue placeholder="Select Category" />
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((cat) => (
-                          <SelectItem key={cat.value} value={cat.value}>
-                            {cat.label}
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+
                     <Button
                       type="button"
                       variant="outline"
@@ -208,23 +334,31 @@ const AddProduct = () => {
                   </div>
                 </div>
 
-                {/* Subcategory with Add Button */}
+                {/* Subcategory */}
                 <div className="space-y-2">
-                  <Label htmlFor="subcategory">Subcategory</Label>
+                  <Label htmlFor="subcategoryId">Subcategory</Label>
                   <div className="flex gap-3">
                     <Select
-                      value={formData.subcategory}
-                      onValueChange={(value) => handleChange("subcategory", value)}
-                      disabled={!formData.category}
+                      value={formData.subcategoryId}
+                      onValueChange={(value) =>
+                        handleChange("subcategoryId", value)
+                      }
+                      disabled={!formData.categoryId}
                     >
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder={formData.category ? "Search Subcategories" : "Select a category first"} />
+                        <SelectValue
+                          placeholder={
+                            formData.categoryId
+                              ? "Select Subcategory"
+                              : "Select category first"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {filteredSubcategories.length > 0 ? (
                           filteredSubcategories.map((sub) => (
-                            <SelectItem key={sub.value} value={sub.value}>
-                              {sub.label}
+                            <SelectItem key={sub.id} value={sub.id}>
+                              {sub.name}
                             </SelectItem>
                           ))
                         ) : (
@@ -234,41 +368,40 @@ const AddProduct = () => {
                         )}
                       </SelectContent>
                     </Select>
+
                     <Button
                       type="button"
                       variant="outline"
                       className="text-primary border-primary hover:bg-primary/10"
                       onClick={() => setShowSubcategoryModal(true)}
-                      disabled={!formData.category}
+                      disabled={!formData.categoryId}
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Add Subcategory
                     </Button>
                   </div>
-                  {!formData.category && (
-                    <p className="text-xs text-muted-foreground">Select a category first to enable subcategories</p>
-                  )}
                 </div>
 
-                {/* Brand with Add Button */}
+                {/* Brand */}
                 <div className="space-y-2">
-                  <Label htmlFor="brand">Brand</Label>
+                  <Label htmlFor="brandId">Brand</Label>
                   <div className="flex gap-3">
                     <Select
-                      value={formData.brand}
-                      onValueChange={(value) => handleChange("brand", value)}
+                      value={formData.brandId}
+                      onValueChange={(value) => handleChange("brandId", value)}
                     >
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Search Brands" />
+                        <SelectValue placeholder="Select Brand" />
                       </SelectTrigger>
                       <SelectContent>
-                        {brands.map((brand) => (
-                          <SelectItem key={brand.value} value={brand.value}>
-                            {brand.label}
+                        {brands.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+
                     <Button
                       type="button"
                       variant="outline"
@@ -281,117 +414,125 @@ const AddProduct = () => {
                   </div>
                 </div>
 
-                {/* Main Unit */}
+                {/* Unit */}
                 <div className="space-y-2">
-                  <Label htmlFor="mainUnit">Main Unit</Label>
+                  <Label htmlFor="unitId">Unit</Label>
                   <Select
-                    value={formData.mainUnit}
-                    onValueChange={(value) => handleChange("mainUnit", value)}
+                    value={formData.unitId}
+                    onValueChange={(value) => handleChange("unitId", value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select Main Unit" />
+                      <SelectValue placeholder="Select Unit" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pc">pc</SelectItem>
-                      <SelectItem value="kg">Kg</SelectItem>
-                      <SelectItem value="g">g</SelectItem>
-                      <SelectItem value="l">L</SelectItem>
-                      <SelectItem value="ml">ml</SelectItem>
-                      <SelectItem value="pack">Pack</SelectItem>
-                      <SelectItem value="dozen">Dozen</SelectItem>
+                      {units.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Sub Unit */}
+                {/* Opening Stock (Optional) */}
                 <div className="space-y-2">
-                  <Label htmlFor="subUnit">Sub Unit</Label>
-                  <Select
-                    value={formData.subUnit}
-                    onValueChange={(value) => handleChange("subUnit", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="No Related Unit Found" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Related Unit Found</SelectItem>
-                      <SelectItem value="pc">pc</SelectItem>
-                      <SelectItem value="kg">Kg</SelectItem>
-                      <SelectItem value="g">g</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Opening Stock */}
-                <div className="space-y-2">
-                  <Label htmlFor="openingStock">Opening Stock</Label>
+                  <Label htmlFor="openingStock">Opening Stock (Optional)</Label>
                   <Input
                     id="openingStock"
                     type="number"
-                    placeholder="pc"
+                    min={0}
+                    placeholder="0"
                     value={formData.openingStock}
-                    onChange={(e) => handleChange("openingStock", e.target.value)}
+                    onChange={(e) =>
+                      handleChange("openingStock", e.target.value)
+                    }
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Opening stock দিতে চাইলে backend এ stockLedger entry লাগবে।
+                  </p>
                 </div>
 
-                {/* Sale Price */}
+                {/* Sell Price */}
                 <div className="space-y-2">
-                  <Label htmlFor="salePrice">
-                    Sale Price<span className="text-destructive">*</span>
+                  <Label htmlFor="sellPrice">
+                    Sell Price<span className="text-destructive">*</span>
                   </Label>
                   <Input
-                    id="salePrice"
+                    id="sellPrice"
                     type="number"
-                    placeholder="Enter Product price.."
-                    value={formData.salePrice}
-                    onChange={(e) => handleChange("salePrice", e.target.value)}
+                    min={0}
+                    step="0.01"
+                    placeholder="Enter sell price.."
+                    value={formData.sellPrice}
+                    onChange={(e) => handleChange("sellPrice", e.target.value)}
                     required
                   />
                 </div>
 
-                {/* Purchase Cost */}
+                {/* Cost Price */}
                 <div className="space-y-2">
-                  <Label htmlFor="purchaseCost">
-                    Purchase Cost<span className="text-destructive">*</span>
+                  <Label htmlFor="costPrice">
+                    Cost Price<span className="text-destructive">*</span>
                   </Label>
                   <Input
-                    id="purchaseCost"
+                    id="costPrice"
                     type="number"
-                    placeholder="Enter Product cost.."
-                    value={formData.purchaseCost}
-                    onChange={(e) => handleChange("purchaseCost", e.target.value)}
+                    min={0}
+                    step="0.01"
+                    placeholder="Enter cost price.."
+                    value={formData.costPrice}
+                    onChange={(e) => handleChange("costPrice", e.target.value)}
                     required
                   />
                 </div>
 
-                {/* Product Details */}
+                {/* Alert Quantity */}
                 <div className="space-y-2">
-                  <Label htmlFor="productDetails">Product Details</Label>
+                  <Label htmlFor="alertQuantity">Alert Quantity</Label>
+                  <Input
+                    id="alertQuantity"
+                    type="number"
+                    min={0}
+                    placeholder="10"
+                    value={formData.alertQuantity}
+                    onChange={(e) =>
+                      handleChange("alertQuantity", e.target.value)
+                    }
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="description">Product Details</Label>
                   <RichTextEditor
-                    value={formData.productDetails}
-                    onChange={(value) => handleChange("productDetails", value)}
+                    value={formData.description}
+                    onChange={(value) => handleChange("description", value)}
                     placeholder="Enter product details..."
                   />
                 </div>
 
-                {/* Product Image */}
+                {/* Image */}
                 <div className="space-y-2">
-                  <Label htmlFor="productImage">Product Image</Label>
+                  <Label htmlFor="imageFile">Product Image</Label>
                   <Input
-                    id="productImage"
+                    id="imageFile"
                     type="file"
                     accept="image/*"
-                    onChange={(e) => handleChange("productImage", e.target.files?.[0] || null)}
+                    onChange={(e) =>
+                      handleChange("imageFile", e.target.files?.[0] || null)
+                    }
                     className="cursor-pointer"
                   />
-                  <p className="text-xs text-muted-foreground">Size: 298x284 pixels</p>
+                  <p className="text-xs text-muted-foreground">
+                    Image upload endpoint থাকলে upload করে URL সেট করুন।
+                  </p>
                 </div>
 
-                {/* Save Button */}
+                {/* Save */}
                 <div className="flex justify-center pt-4">
-                  <Button type="submit" className="px-8">
+                  <Button type="submit" className="px-8" disabled={creating}>
                     <Save className="w-4 h-4 mr-2" />
-                    Save
+                    {creating ? "Saving..." : "Save"}
                   </Button>
                 </div>
               </form>
@@ -404,19 +545,19 @@ const AddProduct = () => {
       <AddCategoryModal
         open={showCategoryModal}
         onOpenChange={setShowCategoryModal}
-        onCategoryAdded={handleCategoryAdded}
+        onCategoryAdded={handleCategoryAdded as any}
       />
       <AddSubcategoryModal
         open={showSubcategoryModal}
         onOpenChange={setShowSubcategoryModal}
-        categories={categories}
-        selectedCategory={formData.category}
-        onSubcategoryAdded={handleSubcategoryAdded}
+        categories={categories.map((c) => ({ value: c.id, label: c.name }))}
+        selectedCategory={formData.categoryId}
+        onSubcategoryAdded={handleSubcategoryAdded as any}
       />
       <AddBrandModal
         open={showBrandModal}
         onOpenChange={setShowBrandModal}
-        onBrandAdded={handleBrandAdded}
+        onBrandAdded={handleBrandAdded as any}
       />
     </DashboardLayout>
   );

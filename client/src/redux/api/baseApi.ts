@@ -6,14 +6,17 @@ export type TagType =
   | "user"
   | "brand"
   | "branch"
-  | "product"
+  | "Product"
   | "order"
   | "Role"
   | "service_order"
   | "company_Info"
   | "Auth"
   | "Permission"
-  | "Category";
+  | "Category"
+  | "Subcategory"
+  | "Unit"
+  | "ProductStock";
 
 export const baseApi = createApi({
   reducerPath: "api",
@@ -23,7 +26,7 @@ export const baseApi = createApi({
     "user",
     "brand",
     "branch",
-    "product",
+    "Product",
     "order",
     "Role",
     "service_order",
@@ -31,6 +34,9 @@ export const baseApi = createApi({
     "Auth",
     "Permission",
     "Category",
+    "Subcategory",
+    "Unit",
+    "ProductStock",
   ] as TagType[],
   endpoints: () => ({}),
 });

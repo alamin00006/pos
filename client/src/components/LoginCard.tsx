@@ -115,9 +115,9 @@ const LoginCard = () => {
 
       {/* Contact */}
       <div className="mt-8 pt-6 border-t space-y-4">
-        <a href="tel:01958104255" className="flex items-center gap-2 text-sm">
+        <a href="tel:01749718743" className="flex items-center gap-2 text-sm">
           <Phone className="w-4 h-4 text-primary" />
-          01958-104255
+          01749-718743
         </a>
       </div>
     </div>

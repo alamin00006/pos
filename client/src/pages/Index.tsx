@@ -5,11 +5,8 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Main Content */}
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start max-w-7xl mx-auto">
-          {/* Center Login Card */}
-          <div className="flex justify-center">
-            <LoginCard />
-          </div>
+        <div>
+          <LoginCard />
         </div>
       </div>
 

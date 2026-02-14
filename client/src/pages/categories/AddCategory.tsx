@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,30 +7,49 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import toast from "react-hot-toast";
+import { useNavigate } from "@/lib/router";
+
+import { useCreateCategoryMutation } from "@/redux/api/categoriesApi";
 
 const AddCategory = () => {
-  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const [createCategory, { isLoading }] = useCreateCategoryMutation();
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const resetForm = () =>
+    setFormData({
+      name: "",
+      description: "",
+    });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name) {
-      toast({
-        title: "Error",
-        description: "Please enter category name",
-        variant: "destructive",
-      });
+
+    if (!formData.name.trim()) {
+      toast.error("Please enter category name");
       return;
     }
-    toast({
-      title: "Success",
-      description: "Category added successfully!",
-    });
-    setFormData({ name: "", description: "" });
+
+    try {
+      await createCategory({
+        name: formData.name.trim(),
+        description: formData.description?.trim() || undefined,
+      }).unwrap();
+
+      toast.success("Category added successfully!");
+      resetForm();
+      navigate("/categories");
+    } catch (err: any) {
+      toast.error(
+        err?.data?.message || err?.data?.error || "Failed to add category",
+      );
+    }
   };
 
   return (
@@ -37,35 +58,58 @@ const AddCategory = () => {
         <CardHeader>
           <CardTitle>Add New Category</CardTitle>
         </CardHeader>
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Name */}
             <div className="space-y-2">
               <Label htmlFor="name">Category Name *</Label>
               <Input
                 id="name"
                 placeholder="Enter category name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, name: e.target.value }))
+                }
               />
             </div>
 
+            {/* Description */}
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 placeholder="Enter category description"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, description: e.target.value }))
+                }
                 rows={4}
               />
             </div>
 
+            {/* Buttons */}
             <div className="flex gap-4">
-              <Button type="submit" className="bg-primary hover:bg-primary/90">
-                Save Category
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Saving..." : "Save Category"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => setFormData({ name: "", description: "" })}>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={resetForm}
+                disabled={isLoading}
+              >
                 Reset
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => navigate("/categories")}
+                disabled={isLoading}
+              >
+                Back
               </Button>
             </div>
           </form>

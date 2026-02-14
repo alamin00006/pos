@@ -54,7 +54,7 @@ export const categoriesApi = baseApi.injectEndpoints({
     >({
       query: ({ id, data }) => ({
         url: `/categories/${id}`,
-        method: "PUT",
+        method: "PATCH",
         data,
       }),
       invalidatesTags: (_res, _err, arg) => [

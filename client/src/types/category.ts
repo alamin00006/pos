@@ -42,13 +42,13 @@ export interface CategoryListQuery {
 
 /** DTOs (match Nest DTO) */
 export interface CreateCategoryDto {
+  id?: string;
   name: string;
-  code?: string;
   description?: string;
 }
 
 export interface UpdateCategoryDto {
+  id?: string;
   name?: string;
-  code?: string;
   description?: string;
 }

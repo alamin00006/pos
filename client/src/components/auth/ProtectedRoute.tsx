@@ -2,20 +2,40 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAppSelector } from "@/hooks/reduxHook";
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  requiredPermissions?: string[];
+}
 
 export default function ProtectedRoute({
   children,
-}: {
-  children: React.ReactNode;
-}) {
-  const { isAuthenticated } = useAuth();
+  requiredPermissions = [],
+}: ProtectedRouteProps) {
   const router = useRouter();
 
-  // useEffect(() => {
-  //   if (!isAuthenticated) router.replace("/");
-  // }, [isAuthenticated, router]);
+  const { accessToken, user } = useAppSelector((state) => state.auth);
 
-  // if (!isAuthenticated) return null;
+  const isAuthenticated = !!accessToken && !!user;
+
+  const hasPermission =
+    requiredPermissions.length === 0 ||
+    requiredPermissions.some((perm) => user?.permissions?.includes(perm));
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/");
+      return;
+    }
+
+    if (!hasPermission) {
+      router.replace("/unauthorized");
+    }
+  }, [isAuthenticated, hasPermission, router]);
+
+  if (!isAuthenticated) return null;
+  if (!hasPermission) return null;
+
   return <>{children}</>;
 }
