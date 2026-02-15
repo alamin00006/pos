@@ -1,0 +1,12 @@
+"use client";
+
+import ProtectedRoute from "@/components/auth/ProtectedRoute.tsx";
+import Reports from "@/pages/Reports";
+
+export default function Page() {
+  return (
+    <ProtectedRoute>
+      <Reports />
+    </ProtectedRoute>
+  );
+}

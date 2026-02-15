@@ -1,0 +1,16 @@
+# Next.js
+.next/
+out/
+
+# Build
+dist/
+build/
+
+# Cache
+node_modules/
+.cache/
+.turbo/
+
+# Env
+.env
+.env.local
