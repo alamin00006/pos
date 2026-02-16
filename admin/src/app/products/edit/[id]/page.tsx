@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 import { useNavigate } from "@/lib/router";
 import DashboardLayout from "@/components/DashboardLayout";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,8 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
-import { Save, Plus } from "lucide-react";
+
+import { Save, Plus, ArrowLeft, RefreshCw } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 import AddCategoryModal from "@/components/AddCategoryModal";
 import AddSubcategoryModal from "@/components/AddSubcategoryModal";
@@ -25,11 +28,13 @@ import RichTextEditor from "@/components/RichTextEditor";
 
 import { useGetCategoriesQuery } from "@/redux/api/categoriesApi";
 import { useGetBrandsQuery } from "@/redux/api/brandsApi";
-
-import { useCreateProductMutation } from "@/redux/api/productsApi";
 import { useGetSubcategoriesQuery } from "@/redux/api/subcategoriesApi";
 import { useGetUnitsQuery } from "@/redux/api/unitsApi";
-import { toast } from "react-hot-toast";
+
+import {
+  useGetProductQuery,
+  useUpdateProductMutation,
+} from "@/redux/api/productsApi";
 
 type SelectOption = { id: string; name: string };
 
@@ -38,7 +43,10 @@ const toNum = (v: string) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-const AddProduct = () => {
+const EditProduct = () => {
+  const params = useParams<{ id: string }>();
+  const id = params?.id ? String(params.id) : "";
+
   const navigate = useNavigate();
 
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -61,17 +69,23 @@ const AddProduct = () => {
     limit: 500,
   });
 
-  const categories: SelectOption[] = categoriesRes?.data ?? ([] as any);
+  const categories: SelectOption[] = (categoriesRes?.data ?? []) as any;
   const subcategories: (SelectOption & { categoryId?: string | null })[] =
-    subcategoriesRes?.data?.data ?? [];
-  const brands: SelectOption[] = brandsRes?.data ?? [];
-  const units: any[] = unitsRes?.data ?? ([] as any);
+    (subcategoriesRes?.data?.data ?? []) as any;
+  const brands: SelectOption[] = (brandsRes?.data ?? []) as any;
+  const units: any[] = (unitsRes?.data ?? []) as any;
 
-  console.log(brands);
-  // -----------------------------
-  // Mutations
-  // -----------------------------
-  const [createProduct, { isLoading: creating }] = useCreateProductMutation();
+  const {
+    data: productRes,
+    isLoading: productLoading,
+    isFetching: productFetching,
+    error: productError,
+    refetch,
+  } = useGetProductQuery(id, { skip: !id }) as any;
+
+  const product = productRes?.data;
+
+  const [updateProduct, { isLoading: updating }] = useUpdateProductMutation();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -93,10 +107,62 @@ const AddProduct = () => {
     imageFile: null as File | null,
   });
 
-  // ✅ Filter subcategories based on categoryId
+  // Hydrate form once product loads
+  useEffect(() => {
+    if (!product) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      name: String(product?.name ?? ""),
+      productCode: String(
+        product?.productCode ?? product?.product_code ?? product?.code ?? "",
+      ),
+      barcode: String(product?.barcode ?? ""),
+      description: String(product?.description ?? product?.details ?? ""),
+
+      categoryId: String(
+        product?.categoryId ??
+          product?.category_id ??
+          product?.category?.id ??
+          "",
+      ),
+      subcategoryId: String(
+        product?.subcategoryId ??
+          product?.subcategory_id ??
+          product?.subcategory?.id ??
+          "",
+      ),
+      brandId: String(
+        product?.brandId ?? product?.brand_id ?? product?.brand?.id ?? "",
+      ),
+      unitId: String(
+        product?.unitId ?? product?.unit_id ?? product?.unit?.id ?? "",
+      ),
+
+      costPrice: String(
+        product?.costPrice ??
+          product?.cost_price ??
+          product?.buyPrice ??
+          product?.cost ??
+          "",
+      ),
+      sellPrice: String(
+        product?.sellPrice ?? product?.sell_price ?? product?.price ?? "",
+      ),
+      alertQuantity: String(
+        product?.alertQuantity ?? product?.alert_quantity ?? prev.alertQuantity,
+      ),
+
+      openingStock: "",
+      imageFile: null,
+    }));
+  }, [product]);
+
   const filteredSubcategories = useMemo(() => {
     if (!formData.categoryId) return [];
-    return subcategories.filter((s) => s.categoryId === formData.categoryId);
+    return subcategories.filter(
+      (s) => String(s.categoryId) === String(formData.categoryId),
+    );
   }, [subcategories, formData.categoryId]);
 
   const handleChange = (field: keyof typeof formData, value: any) => {
@@ -104,7 +170,7 @@ const AddProduct = () => {
       setFormData((prev) => ({
         ...prev,
         categoryId: value,
-        subcategoryId: "", // reset subcategory
+        subcategoryId: "",
       }));
       return;
     }
@@ -117,36 +183,33 @@ const AddProduct = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // -----------------------------
-  // ✅ Submit
-  // -----------------------------
+  const isAnyLoading =
+    categoriesLoading ||
+    subcategoriesLoading ||
+    brandsLoading ||
+    unitsLoading ||
+    productLoading;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Basic validation
+    if (!id) {
+      toast.error("Missing product id");
+      return;
+    }
+
     if (!formData.name.trim()) {
       toast.error("Name required");
       return;
     }
-    // if (!formData.productCode.trim()) {
-    //   toast({
-    //     title: "Product code required",
-    //     description: "Product code দিন।",
-    //   });
-    //   return;
-    // }
+
+    if (!formData.productCode.trim()) {
+      toast.error("Product code required");
+      return;
+    }
 
     try {
-      // ✅ Optional: upload image first -> get url
-      // let imageUrl: string | undefined = undefined;
-      // if (formData.imageFile) {
-      //   const fd = new FormData();
-      //   fd.append("file", formData.imageFile);
-      //   const uploadRes = await uploadFile(fd).unwrap(); // ApiResponse<{ url: string }>
-      //   imageUrl = uploadRes.data.url;
-      // }
-
-      const payload = {
+      const payload: any = {
         name: formData.name.trim(),
         productCode: formData.productCode.trim(),
         barcode: formData.barcode.trim() ? formData.barcode.trim() : undefined,
@@ -164,37 +227,21 @@ const AddProduct = () => {
         brandId: formData.brandId || undefined,
         unitId: formData.unitId || undefined,
         openingStock: parseInt(formData.openingStock || "0", 10) || 0,
-
-        // image: imageUrl, // optional
       };
 
-      const created = await createProduct(payload as any).unwrap();
+      await updateProduct({ id, data: payload }).unwrap();
 
-      // ✅ Optional: opening stock -> stock ledger entry
-      // const openingQty = parseInt(formData.openingStock || "0", 10) || 0;
-      // if (openingQty > 0) {
-      //   await createOpeningStock({
-      //     productId: created.data.id,
-      //     quantity: openingQty,
-      //     note: "Opening stock",
-      //   }).unwrap();
-      // }
-      toast.success("Product Added");
-
-      // navigate("/products");
+      toast.success("Product Updated");
+      //   navigate(`/products/${id}`);
     } catch (err: any) {
-      console.log(err);
       const msg =
         err?.data?.message ||
         err?.message ||
-        "Something went wrong while creating product.";
+        "Something went wrong while updating product.";
       toast.error(msg);
     }
   };
 
-  // -----------------------------
-  // ✅ Modal callbacks (আপনার modals যেভাবে return দেয় সেভাবে adjust)
-  // -----------------------------
   const handleCategoryAdded = (category: { id: string; name: string }) => {
     setFormData((prev) => ({
       ...prev,
@@ -219,12 +266,9 @@ const AddProduct = () => {
     setFormData((prev) => ({ ...prev, brandId: brand.id }));
   };
 
-  const isAnyLoading =
-    categoriesLoading || subcategoriesLoading || brandsLoading || unitsLoading;
-
   return (
-    <DashboardLayout title="New Product">
-      <Tabs defaultValue="add" className="w-full">
+    <DashboardLayout title="Edit Product">
+      <Tabs defaultValue="edit" className="w-full">
         <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start h-auto p-0 mb-6">
           <TabsTrigger
             value="products"
@@ -234,17 +278,45 @@ const AddProduct = () => {
             PRODUCTS
           </TabsTrigger>
           <TabsTrigger
-            value="add"
+            value="edit"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3 font-medium"
           >
-            + ADD PRODUCT
+            EDIT PRODUCT
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="add" className="mt-0">
+        <TabsContent value="edit" className="mt-0">
           <Card>
             <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-6">New Product</h3>
+              <div className="flex items-center justify-between mb-6 gap-3">
+                <h3 className="text-lg font-semibold">Edit Product</h3>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate(`/products/${id}`)}
+                    disabled={!id}
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => refetch()}
+                    disabled={productLoading || productFetching}
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 mr-2 ${
+                        productFetching ? "animate-spin" : ""
+                      }`}
+                    />
+                    Refresh
+                  </Button>
+                </div>
+              </div>
 
               {isAnyLoading && (
                 <p className="text-sm text-muted-foreground mb-4">
@@ -252,8 +324,22 @@ const AddProduct = () => {
                 </p>
               )}
 
+              {productError ? (
+                <div className="rounded-md border p-4 mb-4">
+                  <p className="text-sm text-destructive">
+                    Failed to load product.
+                  </p>
+                  <Button
+                    className="mt-3"
+                    variant="outline"
+                    onClick={() => refetch()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              ) : null}
+
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Product Name */}
                 <div className="space-y-2">
                   <Label htmlFor="name">
                     Product Name<span className="text-destructive">*</span>
@@ -267,7 +353,6 @@ const AddProduct = () => {
                   />
                 </div>
 
-                {/* Product Code */}
                 <div className="space-y-2">
                   <Label htmlFor="productCode">
                     Product Code<span className="text-destructive">*</span>
@@ -283,7 +368,6 @@ const AddProduct = () => {
                   />
                 </div>
 
-                {/* Barcode */}
                 <div className="space-y-2">
                   <Label htmlFor="barcode">Barcode</Label>
                   <Input
@@ -294,7 +378,6 @@ const AddProduct = () => {
                   />
                 </div>
 
-                {/* Category */}
                 <div className="space-y-2">
                   <Label htmlFor="categoryId">
                     Category<span className="text-destructive">*</span>
@@ -330,7 +413,6 @@ const AddProduct = () => {
                   </div>
                 </div>
 
-                {/* Subcategory */}
                 <div className="space-y-2">
                   <Label htmlFor="subcategoryId">Subcategory</Label>
                   <div className="flex gap-3">
@@ -378,7 +460,6 @@ const AddProduct = () => {
                   </div>
                 </div>
 
-                {/* Brand */}
                 <div className="space-y-2">
                   <Label htmlFor="brandId">Brand</Label>
                   <div className="flex gap-3">
@@ -410,7 +491,6 @@ const AddProduct = () => {
                   </div>
                 </div>
 
-                {/* Unit */}
                 <div className="space-y-2">
                   <Label htmlFor="unitId">Unit</Label>
                   <Select
@@ -430,25 +510,6 @@ const AddProduct = () => {
                   </Select>
                 </div>
 
-                {/* Opening Stock (Optional) */}
-                <div className="space-y-2">
-                  <Label htmlFor="openingStock">Opening Stock (Optional)</Label>
-                  <Input
-                    id="openingStock"
-                    type="number"
-                    min={0}
-                    placeholder="0"
-                    value={formData.openingStock}
-                    onChange={(e) =>
-                      handleChange("openingStock", e.target.value)
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Opening stock দিতে চাইলে backend এ stockLedger entry লাগবে।
-                  </p>
-                </div>
-
-                {/* Sell Price */}
                 <div className="space-y-2">
                   <Label htmlFor="sellPrice">
                     Sell Price<span className="text-destructive">*</span>
@@ -465,7 +526,6 @@ const AddProduct = () => {
                   />
                 </div>
 
-                {/* Cost Price */}
                 <div className="space-y-2">
                   <Label htmlFor="costPrice">
                     Cost Price<span className="text-destructive">*</span>
@@ -482,7 +542,6 @@ const AddProduct = () => {
                   />
                 </div>
 
-                {/* Alert Quantity */}
                 <div className="space-y-2">
                   <Label htmlFor="alertQuantity">Alert Quantity</Label>
                   <Input
@@ -497,7 +556,6 @@ const AddProduct = () => {
                   />
                 </div>
 
-                {/* Description */}
                 <div className="space-y-2">
                   <Label htmlFor="description">Product Details</Label>
                   <RichTextEditor
@@ -507,7 +565,6 @@ const AddProduct = () => {
                   />
                 </div>
 
-                {/* Image */}
                 <div className="space-y-2">
                   <Label htmlFor="imageFile">Product Image</Label>
                   <Input
@@ -519,16 +576,16 @@ const AddProduct = () => {
                     }
                     className="cursor-pointer"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Image upload endpoint থাকলে upload করে URL সেট করুন।
-                  </p>
                 </div>
 
-                {/* Save */}
                 <div className="flex justify-center pt-4">
-                  <Button type="submit" className="px-8" disabled={creating}>
+                  <Button
+                    type="submit"
+                    className="px-8"
+                    disabled={updating || productLoading}
+                  >
                     <Save className="w-4 h-4 mr-2" />
-                    {creating ? "Saving..." : "Save"}
+                    {updating ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
               </form>
@@ -537,12 +594,12 @@ const AddProduct = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Modals */}
       <AddCategoryModal
         open={showCategoryModal}
         onOpenChange={setShowCategoryModal}
         onCategoryAdded={handleCategoryAdded as any}
       />
+
       <AddSubcategoryModal
         open={showSubcategoryModal}
         onOpenChange={setShowSubcategoryModal}
@@ -550,6 +607,7 @@ const AddProduct = () => {
         selectedCategory={formData.categoryId}
         onSubcategoryAdded={handleSubcategoryAdded as any}
       />
+
       <AddBrandModal
         open={showBrandModal}
         onOpenChange={setShowBrandModal}
@@ -559,4 +617,4 @@ const AddProduct = () => {
   );
 };
 
-export default AddProduct;
+export default EditProduct;
