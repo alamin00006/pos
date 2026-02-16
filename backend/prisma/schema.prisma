@@ -91,6 +91,10 @@ enum BankTransactionType {
   TRANSFER_IN
   TRANSFER_OUT
 }
+enum ConversionSign {
+  MULTIPLY
+  DIVIDE
+}
 
 // ==================== AUTH & USERS ====================
 
@@ -112,6 +116,8 @@ model User {
   purchases     Purchase[]
   createdCustomers Customer[] @relation("CreatedByUser")
   createdSuppliers Supplier[] @relation("CreatedByUser")
+  stockLedgers  StockLedger[] @relation("StockLedgerCreatedBy") 
+
 
   @@index([email])
   @@index([deletedAt])
@@ -189,20 +195,41 @@ model Owner {
 }
 
 model Unit {
-  id             String    @id @default(uuid())
-  name           String    @unique
-  shortName      String?
-  conversionRate Decimal   @default(1) @db.Decimal(10, 4)
-  baseUnit       String?
-  deletedAt      DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id        String   @id @default(uuid())
+  name      String   @unique
+  shortName String?
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
 
   products Product[]
 
-  @@index([name])
-  @@index([deletedAt])
+  conversion UnitConversion? @relation("UnitToConversion")
+
+  relatedConversions UnitConversion[] @relation("RelatedToUnit")
 }
+
+model UnitConversion {
+  id          String  @id @default(uuid())
+  unitId      String  @unique
+  relatedToId String
+  sign        String  @default("*")
+  factor      Decimal @db.Decimal(12, 4)
+
+  // the unit being converted (Dozen, Kg, Litre)
+  unit Unit @relation("UnitToConversion", fields: [unitId], references: [id], onDelete: Cascade)
+
+  //  base unit (pc, gm, ml)
+  relatedTo Unit @relation("RelatedToUnit", fields: [relatedToId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([relatedToId])
+}
+
+
 
 model Brand {
   id          String    @id @default(uuid())
@@ -302,12 +329,17 @@ model StockLedger {
   note        String?
   createdAt   DateTime          @default(now())
 
-  product Product @relation(fields: [productId], references: [id])
+  createdById String?
+createdBy   User? @relation("StockLedgerCreatedBy", fields: [createdById], references: [id])
+
+  product     Product           @relation(fields: [productId], references: [id])
 
   @@index([productId])
   @@index([source])
   @@index([createdAt])
+  @@index([createdById])
 }
+
 
 // ==================== SUPPLIERS ====================
 

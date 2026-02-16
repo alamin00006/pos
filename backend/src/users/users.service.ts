@@ -1,10 +1,19 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
-import { paginate, buildPaginationQuery, buildOrderByQuery, buildSearchQuery } from '../common/utils/pagination.util';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import * as bcrypt from "bcrypt";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateUserDto } from "./dto/create-user.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
+import { PaginationDto } from "../common/dto/pagination.dto";
+import {
+  paginate,
+  buildPaginationQuery,
+  buildOrderByQuery,
+  buildSearchQuery,
+} from "../common/utils/pagination.util";
 
 @Injectable()
 export class UsersService {
@@ -14,7 +23,7 @@ export class UsersService {
     const { page, limit, search, sortBy, sortOrder } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
     const orderBy = buildOrderByQuery(sortBy, sortOrder);
-    const searchQuery = buildSearchQuery(search, ['name', 'email']);
+    const searchQuery = buildSearchQuery(search, ["name", "email"]);
 
     const where = {
       ...this.prisma.notDeleted(),
@@ -83,7 +92,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     return {
@@ -109,20 +118,21 @@ export class UsersService {
   async create(createUserDto: CreateUserDto) {
     const existingUser = await this.findByEmail(createUserDto.email);
     if (existingUser) {
-      throw new ConflictException('Email already in use');
+      throw new ConflictException("Email already in use");
     }
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
+    const { roleIds, ...rest } = createUserDto;
+
     const user = await this.prisma.user.create({
       data: {
-        ...createUserDto,
+        ...rest,
         password: hashedPassword,
-        userRoles: createUserDto.roleIds
+        isActive: true,
+        userRoles: roleIds?.length
           ? {
-              create: createUserDto.roleIds.map((roleId) => ({
-                roleId,
-              })),
+              create: roleIds.map((roleId) => ({ roleId })),
             }
           : undefined,
       },
@@ -145,22 +155,22 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     if (updateUserDto.email && updateUserDto.email !== user.email) {
       const existingUser = await this.findByEmail(updateUserDto.email);
       if (existingUser) {
-        throw new ConflictException('Email already in use');
+        throw new ConflictException("Email already in use");
       }
     }
 
     const data: any = { ...updateUserDto };
-    
+
     if (updateUserDto.password) {
       data.password = await bcrypt.hash(updateUserDto.password, 10);
     }
-    
+
     delete data.roleIds;
 
     const updatedUser = await this.prisma.user.update({
@@ -185,7 +195,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     await this.prisma.user.update({
@@ -193,7 +203,7 @@ export class UsersService {
       data: this.prisma.softDelete(),
     });
 
-    return { message: 'User deleted successfully' };
+    return { message: "User deleted successfully" };
   }
 
   async assignRole(userId: string, roleId: string) {
@@ -202,7 +212,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     const role = await this.prisma.role.findFirst({
@@ -210,7 +220,7 @@ export class UsersService {
     });
 
     if (!role) {
-      throw new NotFoundException('Role not found');
+      throw new NotFoundException("Role not found");
     }
 
     await this.prisma.userRole.upsert({
@@ -221,7 +231,7 @@ export class UsersService {
       create: { userId, roleId },
     });
 
-    return { message: 'Role assigned successfully' };
+    return { message: "Role assigned successfully" };
   }
 
   async removeRole(userId: string, roleId: string) {
@@ -229,6 +239,6 @@ export class UsersService {
       where: { userId, roleId },
     });
 
-    return { message: 'Role removed successfully' };
+    return { message: "Role removed successfully" };
   }
 }

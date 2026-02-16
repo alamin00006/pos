@@ -9,6 +9,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Patch,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { OwnersService } from "./owners.service";
@@ -45,8 +46,8 @@ export class OwnersController {
     return this.ownersService.create(createOwnerDto);
   }
 
-  @Put(":id")
-  @Permissions("edit_owner")
+  @Patch(":id")
+  // @Permissions("edit_owner")
   @ApiOperation({ summary: "Update owner" })
   async update(
     @Param("id") id: string,

@@ -1,35 +1,43 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional, IsNumber, IsUUID, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsUUID,
+  Min,
+  IsInt,
+} from "class-validator";
+import { Type } from "class-transformer";
 
 export class CreateProductDto {
-  @ApiProperty({ example: 'iPhone 15 Pro' })
+  @ApiProperty({ example: "iPhone 15 Pro" })
   @IsString()
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ example: 'PRD-001' })
+  @ApiProperty({ example: "PRD-001" })
   @IsString()
   @IsNotEmpty()
   productCode: string;
 
-  @ApiPropertyOptional({ example: '8901234567890' })
+  @ApiPropertyOptional({ example: "8901234567890" })
   @IsOptional()
   @IsString()
   barcode?: string;
 
-  @ApiPropertyOptional({ example: 'Latest iPhone model with A17 chip' })
+  @ApiPropertyOptional({ example: "Latest iPhone model with A17 chip" })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiProperty({ example: 1200.00 })
+  @ApiProperty({ example: 1200.0 })
   @IsNumber()
   @Min(0)
   @Type(() => Number)
   costPrice: number;
 
-  @ApiProperty({ example: 1499.00 })
+  @ApiProperty({ example: 1499.0 })
   @IsNumber()
   @Min(0)
   @Type(() => Number)
@@ -66,4 +74,9 @@ export class CreateProductDto {
   @IsOptional()
   @IsUUID()
   unitId?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  openingStock?: number;
 }
