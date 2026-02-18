@@ -48,7 +48,7 @@ export const rbacApi = baseApi.injectEndpoints({
       query: ({ roleId, permissionIds }) => ({
         url: `/roles/${roleId}/permissions`,
         method: "PUT",
-        data: { permissionIds }, // ✅ axiosBaseQuery expects data
+        data: { permissionIds }, //  axiosBaseQuery expects data
       }),
       invalidatesTags: (_res, _err, arg) => [
         { type: "Role" as const, id: arg.roleId },

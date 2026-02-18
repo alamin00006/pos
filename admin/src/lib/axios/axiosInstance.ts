@@ -13,7 +13,7 @@ import {
 import { getBaseUrl } from "@/helpers/config/envConfig";
 
 const instance: AxiosInstance = axios.create({
-  baseURL: getBaseUrl(), // ✅ ONLY here
+  baseURL: getBaseUrl(),
   timeout: 60000,
   headers: {
     "Content-Type": "application/json",

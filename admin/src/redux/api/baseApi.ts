@@ -16,7 +16,8 @@ export type TagType =
   | "Category"
   | "Subcategory"
   | "Unit"
-  | "ProductStock";
+  | "ProductStock"
+  | "supplier";
 
 export const baseApi = createApi({
   reducerPath: "api",
@@ -37,6 +38,7 @@ export const baseApi = createApi({
     "Subcategory",
     "Unit",
     "ProductStock",
+    "supplier",
   ] as TagType[],
   endpoints: () => ({}),
 });
