@@ -1,98 +1,115 @@
-import {
-  Customer,
-  CustomerFormData,
-} from "@/components/Customers/customer.types";
 import { baseApi } from "./baseApi";
 
-const CUSTOMER_URL = "/customers";
+const CUSTOMERS_URL = "/customers";
 
-const customerApi = baseApi.injectEndpoints({
+export const customersApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
-    getAllCustomers: build.query<Customer[], void>({
-      query: (arg) => ({
-        url: `${CUSTOMER_URL}`,
+    // ===============================
+    // GET ALL CUSTOMERS
+    // ===============================
+    getCustomers: build.query<any, any>({
+      query: (params) => ({
+        url: CUSTOMERS_URL,
         method: "GET",
-        params: arg,
+        params,
       }),
-      providesTags: ["user"],
+      providesTags: ["customers"],
     }),
-    getCustomerById: build.query<Customer, number>({
+
+    // ===============================
+    // GET DUE REPORT
+    // ===============================
+    getCustomersDueReport: build.query<any, any>({
+      query: (params) => ({
+        url: `${CUSTOMERS_URL}/due-report`,
+        method: "GET",
+        params,
+      }),
+      providesTags: ["customers"],
+    }),
+
+    // ===============================
+    // GET SINGLE CUSTOMER
+    // ===============================
+    getCustomerById: build.query<any, string>({
       query: (id) => ({
-        url: `${CUSTOMER_URL}/${id}`,
+        url: `${CUSTOMERS_URL}/${id}`,
         method: "GET",
       }),
-      providesTags: ["user"],
+      providesTags: (result, error, id) => [{ type: "customers", id }],
     }),
-    createCustomer: build.mutation<Customer, Partial<CustomerFormData>>({
+
+    // ===============================
+    // GET CUSTOMER LEDGER
+    // ===============================
+    getCustomerLedger: build.query<any, { id: string; params?: any }>({
+      query: ({ id, params }) => ({
+        url: `${CUSTOMERS_URL}/${id}/ledger`,
+        method: "GET",
+        params,
+      }),
+      providesTags: (result, error, { id }) => [{ type: "customers", id }],
+    }),
+
+    // ===============================
+    // CREATE CUSTOMER
+    // ===============================
+    createCustomer: build.mutation<any, any>({
       query: (data) => ({
-        url: `${CUSTOMER_URL}`,
+        url: CUSTOMERS_URL,
         method: "POST",
-        body: data,
+        data: data,
       }),
-      invalidatesTags: ["user"],
+      invalidatesTags: ["customers"],
     }),
-    updateCustomer: build.mutation<
-      Customer,
-      { id: number; data: Partial<CustomerFormData> }
-    >({
+
+    // ===============================
+    // UPDATE CUSTOMER
+    // ===============================
+    updateCustomer: build.mutation<any, { id: string; data: any }>({
       query: ({ id, data }) => ({
-        url: `${CUSTOMER_URL}/${id}`,
+        url: `${CUSTOMERS_URL}/${id}`,
         method: "PUT",
-        body: data,
+        data: data,
       }),
-      invalidatesTags: ["user"],
+      invalidatesTags: (result, error, { id }) => [{ type: "customers", id }],
     }),
-    deleteCustomer: build.mutation<void, number>({
+
+    // ===============================
+    // DELETE CUSTOMER
+    // ===============================
+    deleteCustomer: build.mutation<any, string>({
       query: (id) => ({
-        url: `${CUSTOMER_URL}/${id}`,
+        url: `${CUSTOMERS_URL}/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["user"],
-    }),
-    updateCustomerStatus: build.mutation<
-      Customer,
-      { id: number; status: "active" | "inactive" | "blocked" }
-    >({
-      query: ({ id, status }) => ({
-        url: `${CUSTOMER_URL}/${id}/status`,
-        method: "PATCH",
-        body: { status },
-      }),
-      invalidatesTags: ["user"],
-    }),
-    addLoyaltyPoints: build.mutation<
-      Customer,
-      { id: number; points: number; reason?: string }
-    >({
-      query: ({ id, points, reason }) => ({
-        url: `${CUSTOMER_URL}/${id}/loyalty-points`,
-        method: "POST",
-        body: { points, reason },
-      }),
-      invalidatesTags: ["user"],
+      invalidatesTags: ["customers"],
     }),
 
-    getAllOrdersCustomer: build.query<Customer[], void>({
-      query: (arg) => {
-        return {
-          url: `/customers/search-by-order`,
-          method: "GET",
-          params: arg,
-        };
-      },
-      providesTags: ["order"],
+    // ===============================
+    // MAKE PAYMENT (RECEIVE PAYMENT)
+    // ===============================
+    makeCustomerPayment: build.mutation<any, { id: string; data: any }>({
+      query: ({ id, data }) => ({
+        url: `${CUSTOMERS_URL}/${id}/payment`,
+        method: "POST",
+        data: data,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: "customers", id }],
     }),
   }),
-  overrideExisting: true,
 });
 
 export const {
-  useGetAllCustomersQuery,
+  // Queries
+  useGetCustomersQuery,
+  useGetCustomersDueReportQuery,
   useGetCustomerByIdQuery,
+  useGetCustomerLedgerQuery,
+
+  // Mutations
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
   useDeleteCustomerMutation,
-  useUpdateCustomerStatusMutation,
-  useAddLoyaltyPointsMutation,
-  useGetAllOrdersCustomerQuery,
-} = customerApi;
+  useMakeCustomerPaymentMutation,
+} = customersApi;
