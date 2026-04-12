@@ -2,34 +2,31 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePurchaseDto, UpdatePurchaseDto, PurchaseQueryDto, AddPurchasePaymentDto } from './dto';
 import { getPaginationMeta } from '../common/utils/pagination.util';
-import { PaymentStatus, PurchaseStatus, StockLedgerType, StockLedgerSource, SupplierLedgerType, CashBookType, CashBookSource } from '@prisma/client';
+import {
+  BankTransactionType,
+  PaymentMethod,
+  PaymentStatus,
+  PurchaseStatus,
+  StockLedgerType,
+  StockLedgerSource,
+  SupplierLedgerType,
+  CashBookType,
+  CashBookSource,
+} from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import {
+  addCashBookEntry,
+  nextDocumentNo,
+  recordBankTransaction,
+} from '../common/utils/pos-accounting.util';
 
 @Injectable()
 export class PurchasesService {
   constructor(private prisma: PrismaService) {}
 
-  private async generateInvoiceNo(): Promise<string> {
-    const today = new Date();
-    const prefix = `PUR${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}`;
-    
-    const lastPurchase = await this.prisma.purchase.findFirst({
-      where: { invoiceNo: { startsWith: prefix } },
-      orderBy: { invoiceNo: 'desc' },
-    });
-
-    let sequence = 1;
-    if (lastPurchase) {
-      const lastSeq = parseInt(lastPurchase.invoiceNo.slice(-4));
-      sequence = lastSeq + 1;
-    }
-
-    return `${prefix}${String(sequence).padStart(4, '0')}`;
-  }
-
-  async create(dto: CreatePurchaseDto, userId?: string) {
+  async create(dto: CreatePurchaseDto, userId?: string, branchId?: string) {
     const supplier = await this.prisma.supplier.findUnique({
-      where: { id: dto.supplierId, deletedAt: null },
+      where: { id: dto.supplierId, deletedAt: null, ...(branchId ? { branchId } : {}) } as any,
     });
 
     if (!supplier) {
@@ -46,13 +43,19 @@ export class PurchasesService {
       throw new BadRequestException('One or more products not found');
     }
 
-    const invoiceNo = await this.generateInvoiceNo();
-
     // Calculate totals
     const subtotal = dto.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
     const total = subtotal - (dto.discount || 0) + (dto.tax || 0) + (dto.shippingCost || 0);
     const paidAmount = dto.paidAmount || 0;
     const dueAmount = total - paidAmount;
+
+    if (paidAmount > total) {
+      throw new BadRequestException(`Paid amount cannot exceed purchase total of ${total}`);
+    }
+
+    if (paidAmount > 0 && (dto.paymentMethod || PaymentMethod.CASH) !== PaymentMethod.CASH && !dto.bankAccountId) {
+      throw new BadRequestException('Bank account is required for non-cash purchase payments');
+    }
 
     // Determine payment status
     let paymentStatus: PaymentStatus = PaymentStatus.PENDING;
@@ -63,12 +66,15 @@ export class PurchasesService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      const invoiceNo = await nextDocumentNo(tx, 'purchase_invoice', 'purchase', 'invoiceNo', 'PUR');
+
       // Create purchase
       const purchase = await tx.purchase.create({
         data: {
           invoiceNo,
           supplierId: dto.supplierId,
           userId,
+          branchId,
           subtotal: new Decimal(subtotal),
           discount: new Decimal(dto.discount || 0),
           tax: new Decimal(dto.tax || 0),
@@ -100,6 +106,7 @@ export class PurchasesService {
         await tx.stockLedger.create({
           data: {
             productId: item.productId,
+            branchId,
             type: StockLedgerType.IN,
             source: StockLedgerSource.PURCHASE,
             referenceId: purchase.id,
@@ -136,38 +143,43 @@ export class PurchasesService {
           data: {
             purchaseId: purchase.id,
             supplierId: dto.supplierId,
+            branchId,
             amount: new Decimal(paidAmount),
             paymentMethod: dto.paymentMethod,
             note: `Payment for purchase ${invoiceNo}`,
           },
         });
 
-        // Get last cash book balance
-        const lastCashBook = await tx.cashBook.findFirst({
-          orderBy: { createdAt: 'desc' },
-        });
-        const cashBalance = lastCashBook?.balance || new Decimal(0);
-
-        await tx.cashBook.create({
-          data: {
-            type: CashBookType.OUT,
-            source: CashBookSource.PURCHASE,
-            referenceId: purchase.id,
-            amount: new Decimal(paidAmount),
-            balance: new Decimal(Number(cashBalance) - paidAmount),
-            description: `Purchase payment ${invoiceNo}`,
-          },
-        });
+        if ((dto.paymentMethod || PaymentMethod.CASH) === PaymentMethod.CASH) {
+          await addCashBookEntry(
+            tx,
+            CashBookType.OUT,
+            CashBookSource.PURCHASE,
+            purchase.id,
+            paidAmount,
+            `Purchase payment ${invoiceNo}`,
+            branchId,
+          );
+        } else if (dto.bankAccountId) {
+          await recordBankTransaction(
+            tx,
+            dto.bankAccountId,
+            paidAmount,
+            BankTransactionType.WITHDRAW,
+            purchase.id,
+            `Purchase payment ${invoiceNo}`,
+          );
+        }
       }
 
       return purchase;
     });
   }
 
-  async findAll(query: PurchaseQueryDto) {
+  async findAll(query: PurchaseQueryDto, branchId?: string) {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', supplierId, status, paymentStatus, startDate, endDate } = query;
 
-    const where: any = { deletedAt: null };
+    const where: any = { deletedAt: null, ...(branchId ? { branchId } : {}) };
 
     if (search) {
       where.OR = [
@@ -204,9 +216,9 @@ export class PurchasesService {
     return { data, meta: getPaginationMeta(total, page, limit) };
   }
 
-  async findOne(id: string) {
-    const purchase = await this.prisma.purchase.findUnique({
-      where: { id, deletedAt: null },
+  async findOne(id: string, branchId?: string) {
+    const purchase = await this.prisma.purchase.findFirst({
+      where: { id, deletedAt: null, ...(branchId ? { branchId } : {}) },
       include: {
         supplier: true,
         purchaseItems: { include: { product: true } },
@@ -260,8 +272,8 @@ export class PurchasesService {
     });
   }
 
-  async addPayment(id: string, dto: AddPurchasePaymentDto) {
-    const purchase = await this.findOne(id);
+  async addPayment(id: string, dto: AddPurchasePaymentDto, branchId?: string) {
+    const purchase = await this.findOne(id, branchId);
 
     if (Number(purchase.dueAmount) <= 0) {
       throw new BadRequestException('This purchase is already fully paid');
@@ -269,6 +281,10 @@ export class PurchasesService {
 
     if (dto.amount > Number(purchase.dueAmount)) {
       throw new BadRequestException(`Payment amount cannot exceed due amount of ${purchase.dueAmount}`);
+    }
+
+    if ((dto.paymentMethod || PaymentMethod.CASH) !== PaymentMethod.CASH && !dto.bankAccountId) {
+      throw new BadRequestException('Bank account is required for non-cash purchase payments');
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -299,6 +315,7 @@ export class PurchasesService {
         data: {
           purchaseId: id,
           supplierId: purchase.supplierId,
+          branchId: purchase.branchId,
           amount: new Decimal(dto.amount),
           paymentMethod: dto.paymentMethod,
           note: dto.note || `Payment for purchase ${purchase.invoiceNo}`,
@@ -323,22 +340,26 @@ export class PurchasesService {
         },
       });
 
-      // Update cash book
-      const lastCashBook = await tx.cashBook.findFirst({
-        orderBy: { createdAt: 'desc' },
-      });
-      const cashBalance = lastCashBook?.balance || new Decimal(0);
-
-      await tx.cashBook.create({
-        data: {
-          type: CashBookType.OUT,
-          source: CashBookSource.PAYMENT_MADE,
-          referenceId: id,
-          amount: new Decimal(dto.amount),
-          balance: new Decimal(Number(cashBalance) - dto.amount),
-          description: `Purchase payment ${purchase.invoiceNo}`,
-        },
-      });
+      if ((dto.paymentMethod || PaymentMethod.CASH) === PaymentMethod.CASH) {
+        await addCashBookEntry(
+          tx,
+          CashBookType.OUT,
+          CashBookSource.PAYMENT_MADE,
+          id,
+          dto.amount,
+          `Purchase payment ${purchase.invoiceNo}`,
+          purchase.branchId || undefined,
+        );
+      } else if (dto.bankAccountId) {
+        await recordBankTransaction(
+          tx,
+          dto.bankAccountId,
+          dto.amount,
+          BankTransactionType.WITHDRAW,
+          id,
+          `Purchase payment ${purchase.invoiceNo}`,
+        );
+      }
 
       return updatedPurchase;
     });
@@ -355,11 +376,65 @@ export class PurchasesService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    return this.prisma.$transaction(async (tx) => {
+      const purchase = await tx.purchase.findFirst({
+        where: { id, deletedAt: null },
+        include: {
+          purchaseItems: true,
+          payments: { where: { deletedAt: null } },
+        },
+      });
+      if (!purchase) throw new NotFoundException('Purchase not found');
 
-    return this.prisma.purchase.update({
-      where: { id },
-      data: { deletedAt: new Date() },
+      for (const item of purchase.purchaseItems) {
+        await tx.stockLedger.create({
+          data: {
+            productId: item.productId,
+            type: StockLedgerType.OUT,
+            source: StockLedgerSource.ADJUSTMENT,
+            referenceId: purchase.id,
+            quantity: item.quantity,
+            note: `Purchase delete reversal - Invoice #${purchase.invoiceNo}`,
+          },
+        });
+      }
+
+      const cashPaid = purchase.payments
+        .filter((payment) => payment.paymentMethod === PaymentMethod.CASH)
+        .reduce((sum, payment) => sum + Number(payment.amount), 0);
+      if (cashPaid > 0) {
+        await addCashBookEntry(
+          tx,
+          CashBookType.IN,
+          CashBookSource.OTHER,
+          purchase.id,
+          cashPaid,
+          `Purchase delete payment reversal - Invoice #${purchase.invoiceNo}`,
+        );
+      }
+
+      if (Number(purchase.dueAmount) > 0) {
+        const lastLedger = await tx.supplierLedger.findFirst({
+          where: { supplierId: purchase.supplierId },
+          orderBy: { createdAt: 'desc' },
+        });
+        const previousBalance = Number(lastLedger?.balance) || 0;
+        await tx.supplierLedger.create({
+          data: {
+            supplierId: purchase.supplierId,
+            type: SupplierLedgerType.RETURN_ADJUST,
+            referenceId: purchase.id,
+            amount: purchase.dueAmount,
+            balance: previousBalance - Number(purchase.dueAmount),
+            note: `Purchase delete due reversal - Invoice #${purchase.invoiceNo}`,
+          },
+        });
+      }
+
+      await tx.payment.updateMany({ where: { purchaseId: id, deletedAt: null }, data: this.prisma.softDelete() });
+      await tx.purchase.update({ where: { id }, data: this.prisma.softDelete() });
+
+      return { message: 'Purchase deleted successfully' };
     });
   }
 

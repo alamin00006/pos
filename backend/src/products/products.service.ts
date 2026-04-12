@@ -280,8 +280,9 @@ export class ProductsService {
     });
 
     return rows.reduce((sum, r) => {
-      if (r.type === "IN") return sum + r.quantity;
-      if (r.type === "OUT") return sum - r.quantity;
+      const quantity = Math.abs(r.quantity);
+      if (r.type === "IN") return sum + quantity;
+      if (r.type === "OUT") return sum - quantity;
       return sum + r.quantity; // ADJUST signed delta
     }, 0);
   }
@@ -289,15 +290,14 @@ export class ProductsService {
   private async calculateStockForProducts(productIds: string[]) {
     if (productIds.length === 0) return {} as Record<string, number>;
 
-    const grouped = await this.prisma.stockLedger.groupBy({
-      by: ["productId", "type"],
+    const rows = await this.prisma.stockLedger.findMany({
       where: { productId: { in: productIds } },
-      _sum: { quantity: true },
+      select: { productId: true, type: true, quantity: true },
     });
 
     const map: Record<string, number> = {};
-    for (const row of grouped) {
-      const qty = row._sum.quantity ?? 0;
+    for (const row of rows) {
+      const qty = Math.abs(row.quantity);
       if (!map[row.productId]) map[row.productId] = 0;
 
       if (row.type === "IN") map[row.productId] += qty;

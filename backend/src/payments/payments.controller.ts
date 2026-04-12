@@ -2,8 +2,7 @@ import { Controller, Get, Post, Body, Param, Delete, Query } from '@nestjs/commo
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { Permissions } from '../common/decorators';
-import { PaginationDto } from '../common/dto/pagination.dto';
-import { CreatePaymentDto } from './dto';
+import { CreatePaymentDto, PaymentQueryDto } from './dto';
 
 @ApiTags('Payments')
 @ApiBearerAuth()
@@ -21,7 +20,7 @@ export class PaymentsController {
   @Get()
   @Permissions('view_payment')
   @ApiOperation({ summary: 'Get all payments' })
-  findAll(@Query() query: PaginationDto) {
+  findAll(@Query() query: PaymentQueryDto) {
     return this.service.findAll(query);
   }
 

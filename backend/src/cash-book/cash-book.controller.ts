@@ -3,6 +3,34 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CashBookService } from './cash-book.service';
 import { Permissions } from '../common/decorators';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { IsDateString, IsIn, IsOptional } from 'class-validator';
+
+class CashBookQueryDto extends PaginationDto {
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
+  @IsOptional()
+  @IsIn(['IN', 'OUT'])
+  type?: string;
+
+  @IsOptional()
+  source?: string;
+}
+
+class CashBookSummaryQueryDto {
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+}
 
 @ApiTags('Cash Book')
 @ApiBearerAuth()
@@ -13,7 +41,7 @@ export class CashBookController {
   @Get()
   @Permissions('cash_book')
   @ApiOperation({ summary: 'Get all cash book entries' })
-  findAll(@Query() query: PaginationDto) { return this.service.findAll(query); }
+  findAll(@Query() query: CashBookQueryDto) { return this.service.findAll(query); }
 
   @Get('balance')
   @Permissions('cash_book')
@@ -23,5 +51,5 @@ export class CashBookController {
   @Get('summary')
   @Permissions('cash_book')
   @ApiOperation({ summary: 'Get cash book summary' })
-  getSummary(@Query() query: { startDate?: string; endDate?: string }) { return this.service.getSummary(query); }
+  getSummary(@Query() query: CashBookSummaryQueryDto) { return this.service.getSummary(query); }
 }

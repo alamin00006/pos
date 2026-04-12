@@ -2,15 +2,24 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { getPaginationMeta } from '../common/utils/pagination.util';
-import { CashBookType, CashBookSource } from '@prisma/client';
+import { BankTransactionType, CashBookType, CashBookSource, PaymentMethod } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { addCashBookEntry, recordBankTransaction } from '../common/utils/pos-accounting.util';
 
 @Injectable()
 export class SalaryService {
   constructor(private prisma: PrismaService) {}
 
+  private normalizePaymentMethod(input?: string): PaymentMethod {
+    if (!input) return PaymentMethod.CASH;
+    const value = input.toUpperCase();
+    if (value === 'BANK') return PaymentMethod.BANK_TRANSFER;
+    if (value in PaymentMethod) return value as PaymentMethod;
+    return PaymentMethod.CASH;
+  }
+
   async create(dto: any) {
-    const employee = await this.prisma.employee.findUnique({ where: { id: dto.employeeId, deletedAt: null } });
+    const employee = await this.prisma.employee.findFirst({ where: { id: dto.employeeId, deletedAt: null } });
     if (!employee) throw new NotFoundException('Employee not found');
 
     const existing = await this.prisma.salaryPayment.findUnique({
@@ -19,7 +28,12 @@ export class SalaryService {
     if (existing) throw new BadRequestException('Salary already paid for this month');
 
     const basicSalary = dto.basicSalary || Number(employee.basicSalary);
-    const netSalary = basicSalary + (dto.overtime || 0) + (dto.bonus || 0) - (dto.deduction || 0);
+    const deduction = dto.deduction ?? dto.deductions ?? 0;
+    const netSalary = basicSalary + (dto.overtime || 0) + (dto.bonus || 0) - deduction - (dto.advance || 0);
+    const paymentMethod = this.normalizePaymentMethod(dto.paymentMethod);
+    if (paymentMethod !== PaymentMethod.CASH && !dto.bankAccountId) {
+      throw new BadRequestException('Bank account is required for non-cash salary payments');
+    }
 
     return this.prisma.$transaction(async (tx) => {
       const salary = await tx.salaryPayment.create({
@@ -28,29 +42,35 @@ export class SalaryService {
           basicSalary: new Decimal(basicSalary),
           overtime: new Decimal(dto.overtime || 0),
           bonus: new Decimal(dto.bonus || 0),
-          deduction: new Decimal(dto.deduction || 0),
+          deduction: new Decimal(deduction + (dto.advance || 0)),
           netSalary: new Decimal(netSalary),
-          paymentMethod: dto.paymentMethod,
+          paymentMethod,
           month: dto.month,
           year: dto.year,
-          note: dto.note,
+          note: dto.note || dto.notes,
         },
         include: { employee: true },
       });
 
-      const lastCashBook = await tx.cashBook.findFirst({ orderBy: { createdAt: 'desc' } });
-      const cashBalance = lastCashBook?.balance || new Decimal(0);
-
-      await tx.cashBook.create({
-        data: {
-          type: CashBookType.OUT,
-          source: CashBookSource.OTHER,
-          referenceId: salary.id,
-          amount: new Decimal(netSalary),
-          balance: new Decimal(Number(cashBalance) - netSalary),
-          description: `Salary payment - ${employee.name} (${dto.month}/${dto.year})`,
-        },
-      });
+      if (paymentMethod === PaymentMethod.CASH) {
+        await addCashBookEntry(
+          tx,
+          CashBookType.OUT,
+          CashBookSource.OTHER,
+          salary.id,
+          netSalary,
+          `Salary payment - ${employee.name} (${dto.month}/${dto.year})`,
+        );
+      } else {
+        await recordBankTransaction(
+          tx,
+          dto.bankAccountId,
+          netSalary,
+          BankTransactionType.WITHDRAW,
+          salary.id,
+          `Salary payment - ${employee.name} (${dto.month}/${dto.year})`,
+        );
+      }
 
       return salary;
     });

@@ -7,7 +7,7 @@ import {
   IsUUID,
   IsDateString,
   Min,
-  IsEnum,
+  IsIn,
 } from 'class-validator';
 
 export class CreateExpenseDto {
@@ -21,10 +21,10 @@ export class CreateExpenseDto {
   @Min(0)
   amount: number;
 
-  @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440000' })
-  @IsOptional()
+  @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
+  @IsNotEmpty()
   @IsUUID()
-  categoryId?: string;
+  categoryId: string;
 
   @ApiPropertyOptional({ example: '2024-01-15' })
   @IsOptional()
@@ -33,7 +33,7 @@ export class CreateExpenseDto {
 
   @ApiPropertyOptional({ example: 'cash' })
   @IsOptional()
-  @IsEnum(['cash', 'bank', 'card', 'cheque', 'other'])
+  @IsIn(['cash', 'bank', 'card', 'cheque', 'mobile_money', 'mobile_payment', 'other'])
   paymentMethod?: string;
 
   @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440000' })

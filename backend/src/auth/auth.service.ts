@@ -14,6 +14,19 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
+  private getBranchContext(user: any) {
+    const userBranches = user.userBranches || [];
+    const branchIds = userBranches.map((ub: any) => ub.branchId);
+    const defaultBranchId = userBranches.find((ub: any) => ub.isDefault)?.branchId || branchIds[0];
+    const branches = userBranches.map((ub: any) => ({
+      id: ub.branch.id,
+      name: ub.branch.name,
+      code: ub.branch.code,
+      isDefault: ub.isDefault,
+    }));
+    return { branchIds, defaultBranchId, branches };
+  }
+
   async login(loginDto: LoginDto) {
     const { email, password, rememberMe } = loginDto;
 
@@ -33,6 +46,7 @@ export class AuthService {
             },
           },
         },
+        userBranches: { include: { branch: true } },
       },
     });
 
@@ -59,12 +73,15 @@ export class AuthService {
       ),
     ];
 
+    const branchContext = this.getBranchContext(user);
     const payload = {
       sub: user.id,
       email: user.email,
       name: user.name,
       roles,
       permissions,
+      branchIds: branchContext.branchIds,
+      defaultBranchId: branchContext.defaultBranchId,
     };
 
     const accessToken = this.generateAccessToken(payload);
@@ -79,6 +96,8 @@ export class AuthService {
         name: user.name,
         roles,
         permissions,
+        branches: branchContext.branches,
+        defaultBranchId: branchContext.defaultBranchId,
       },
     };
   }
@@ -105,6 +124,7 @@ export class AuthService {
               },
             },
           },
+          userBranches: { include: { branch: true } },
         },
       });
 
@@ -121,12 +141,15 @@ export class AuthService {
         ),
       ];
 
+      const branchContext = this.getBranchContext(user);
       const newPayload = {
         sub: user.id,
         email: user.email,
         name: user.name,
         roles,
         permissions,
+        branchIds: branchContext.branchIds,
+        defaultBranchId: branchContext.defaultBranchId,
       };
 
       const accessToken = this.generateAccessToken(newPayload);
@@ -169,6 +192,7 @@ export class AuthService {
             },
           },
         },
+        userBranches: { include: { branch: true } },
       },
     });
 
@@ -185,11 +209,16 @@ export class AuthService {
       ),
     ];
 
+    const branchContext = this.getBranchContext(user);
     return {
       ...user,
       roles,
       permissions,
+      branches: branchContext.branches,
+      branchIds: branchContext.branchIds,
+      defaultBranchId: branchContext.defaultBranchId,
       userRoles: undefined,
+      userBranches: undefined,
     };
   }
 

@@ -33,8 +33,10 @@ import { ReportsModule } from "./reports/reports.module";
 import { SettingsModule } from "./settings/settings.module";
 import { BackupModule } from "./backup/backup.module";
 import { CashBookModule } from "./cash-book/cash-book.module";
+import { BranchesModule } from "./branches/branches.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "./common/guards/permissions.guard";
+import { BranchAccessGuard } from "./common/guards/branch-access.guard";
 
 @Module({
   imports: [
@@ -78,20 +80,25 @@ import { PermissionsGuard } from "./common/guards/permissions.guard";
     SettingsModule,
     BackupModule,
     CashBookModule,
+    BranchesModule,
   ],
   providers: [
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: ThrottlerGuard,
-    // },
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: JwtAuthGuard,
-    // },
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: PermissionsGuard,
-    // },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: BranchAccessGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard,
+    },
   ],
 })
 export class AppModule {}

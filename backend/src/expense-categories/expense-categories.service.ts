@@ -35,7 +35,7 @@ export class ExpenseCategoriesService {
   }
 
   async findOne(id: string) {
-    const category = await this.prisma.expenseCategory.findUnique({ where: { id, deletedAt: null } });
+    const category = await this.prisma.expenseCategory.findFirst({ where: { id, deletedAt: null } });
     if (!category) throw new NotFoundException('Expense category not found');
     return category;
   }

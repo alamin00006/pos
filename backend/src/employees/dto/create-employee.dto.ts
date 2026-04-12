@@ -7,7 +7,7 @@ import {
   IsEmail,
   IsDateString,
   Min,
-  IsEnum,
+  IsIn,
 } from 'class-validator';
 
 export class CreateEmployeeDto {
@@ -54,7 +54,7 @@ export class CreateEmployeeDto {
 
   @ApiPropertyOptional({ example: 'active' })
   @IsOptional()
-  @IsEnum(['active', 'inactive', 'on_leave', 'terminated'])
+  @IsIn(['active', 'inactive', 'on_leave', 'terminated'])
   status?: string;
 
   @ApiPropertyOptional({ example: 'EMP-001' })

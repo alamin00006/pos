@@ -11,7 +11,7 @@ import { SupplierLedgerType, CashBookType, CashBookSource } from '@prisma/client
 export class SuppliersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(query: PaginationDto) {
+  async findAll(query: PaginationDto, branchId?: string) {
     const { page, limit, search, sortBy, sortOrder } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
     const orderBy = buildOrderByQuery(sortBy, sortOrder);
@@ -19,6 +19,7 @@ export class SuppliersService {
 
     const where = {
       ...this.prisma.notDeleted(),
+      ...(branchId ? { branchId } : {}),
       ...searchQuery,
     };
 
@@ -43,12 +44,12 @@ export class SuppliersService {
     return paginate(suppliersWithDue, total, page!, limit!);
   }
 
-  async getDueReport(query: PaginationDto) {
+  async getDueReport(query: PaginationDto, branchId?: string) {
     const { page, limit } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
 
     const suppliers = await this.prisma.supplier.findMany({
-      where: this.prisma.notDeleted(),
+      where: { ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}) },
     });
 
     const suppliersWithDue = await Promise.all(
@@ -65,9 +66,9 @@ export class SuppliersService {
     return paginate(paginatedSuppliers, suppliersWithPositiveDue.length, page!, limit!);
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, branchId?: string) {
     const supplier = await this.prisma.supplier.findFirst({
-      where: { id, ...this.prisma.notDeleted() },
+      where: { id, ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}) },
     });
 
     if (!supplier) {
@@ -97,11 +98,12 @@ export class SuppliersService {
     return paginate(ledger, total, page!, limit!);
   }
 
-  async create(createSupplierDto: CreateSupplierDto, userId?: string) {
+  async create(createSupplierDto: CreateSupplierDto, userId?: string, branchId?: string) {
     const supplier = await this.prisma.supplier.create({
       data: {
         ...createSupplierDto,
         createdById: userId,
+        branchId,
       },
     });
 

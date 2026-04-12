@@ -5,7 +5,7 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { CustomerPaymentDto } from './dto/customer-payment.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
-import { Permissions, CurrentUser } from '../common/decorators';
+import { CurrentBranch, Permissions, CurrentUser } from '../common/decorators';
 
 @ApiTags('Customers')
 @ApiBearerAuth('access-token')
@@ -16,17 +16,17 @@ export class CustomersController {
   @Get()
   @Permissions('create_customer')
   @ApiOperation({ summary: 'Get all customers' })
-  async findAll(@Query() query: PaginationDto) { return this.customersService.findAll(query); }
+  async findAll(@Query() query: PaginationDto, @CurrentBranch() branchId?: string) { return this.customersService.findAll(query, branchId); }
 
   @Get('due-report')
   @Permissions('customer_due_report')
   @ApiOperation({ summary: 'Get customers with due amounts' })
-  async getDueReport(@Query() query: PaginationDto) { return this.customersService.getDueReport(query); }
+  async getDueReport(@Query() query: PaginationDto, @CurrentBranch() branchId?: string) { return this.customersService.getDueReport(query, branchId); }
 
   @Get(':id')
   @Permissions('create_customer')
   @ApiOperation({ summary: 'Get customer by ID' })
-  async findOne(@Param('id') id: string) { return this.customersService.findOne(id); }
+  async findOne(@Param('id') id: string, @CurrentBranch() branchId?: string) { return this.customersService.findOne(id, branchId); }
 
   @Get(':id/ledger')
   @Permissions('customer_ledger', 'customer_ledger_report')
@@ -36,7 +36,7 @@ export class CustomersController {
   @Post()
   @Permissions('add_customer', 'create_customer', 'pos_add_customer')
   @ApiOperation({ summary: 'Create new customer' })
-  async create(@Body() dto: CreateCustomerDto, @CurrentUser('sub') userId: string) { return this.customersService.create(dto, userId); }
+  async create(@Body() dto: CreateCustomerDto, @CurrentUser('sub') userId: string, @CurrentBranch() branchId?: string) { return this.customersService.create(dto, userId, branchId); }
 
   @Put(':id')
   @Permissions('edit_customer')

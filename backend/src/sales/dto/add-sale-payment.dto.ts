@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, Min, IsOptional, IsString, IsEnum, IsDateString } from 'class-validator';
+import { IsNotEmpty, IsNumber, Min, IsOptional, IsString, IsEnum, IsDateString, IsUUID } from 'class-validator';
 import { PaymentMethod } from '@prisma/client';
 
 export class AddSalePaymentDto {
@@ -13,6 +13,11 @@ export class AddSalePaymentDto {
   @IsOptional()
   @IsEnum(PaymentMethod)
   paymentMethod?: PaymentMethod;
+
+  @ApiPropertyOptional({ description: 'Bank account ID for non-cash payments' })
+  @IsOptional()
+  @IsUUID()
+  bankAccountId?: string;
 
   @ApiPropertyOptional({ description: 'Payment note' })
   @IsOptional()

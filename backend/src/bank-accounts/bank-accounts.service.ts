@@ -13,7 +13,7 @@ export class BankAccountsService {
     return this.prisma.bankAccount.create({
       data: {
         bankName: dto.bankName,
-        accountName: dto.accountName,
+        accountName: dto.accountName || dto.accountHolder || dto.name,
         accountNumber: dto.accountNumber,
         branch: dto.branch,
         openingBalance: new Decimal(dto.openingBalance || 0),
@@ -49,7 +49,7 @@ export class BankAccountsService {
   }
 
   async findOne(id: string) {
-    const account = await this.prisma.bankAccount.findUnique({
+    const account = await this.prisma.bankAccount.findFirst({
       where: { id, deletedAt: null },
       include: { transactions: { orderBy: { transactionDate: 'desc' }, take: 50 } },
     });
@@ -60,9 +60,18 @@ export class BankAccountsService {
 
   async update(id: string, dto: any) {
     await this.findOne(id);
+    const data = { ...dto };
+    if (!data.accountName && (data.accountHolder || data.name)) {
+      data.accountName = data.accountHolder || data.name;
+    }
+    delete data.accountHolder;
+    delete data.name;
+    delete data.swiftCode;
+    delete data.routingNumber;
+    delete data.description;
     return this.prisma.bankAccount.update({
       where: { id },
-      data: dto,
+      data,
     });
   }
 

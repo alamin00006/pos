@@ -6,7 +6,7 @@ import {
   IsString,
   IsUUID,
   Min,
-  IsEnum,
+  IsIn,
   IsDateString,
 } from 'class-validator';
 
@@ -17,7 +17,7 @@ export class CreatePaymentDto {
   amount: number;
 
   @ApiProperty({ example: 'customer' })
-  @IsEnum(['customer', 'supplier'])
+  @IsIn(['customer', 'supplier'])
   @IsNotEmpty()
   paymentFor: string;
 
@@ -42,7 +42,7 @@ export class CreatePaymentDto {
   purchaseId?: string;
 
   @ApiProperty({ example: 'cash' })
-  @IsEnum(['cash', 'bank', 'card', 'cheque', 'mobile_money', 'other'])
+  @IsIn(['cash', 'bank', 'card', 'cheque', 'mobile_money', 'other'])
   @IsNotEmpty()
   paymentMethod: string;
 

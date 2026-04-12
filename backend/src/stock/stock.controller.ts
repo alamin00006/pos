@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StockService } from './stock.service';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { StockQueryDto } from './dto/stock-query.dto';
-import { Permissions } from '../common/decorators';
+import { CurrentBranch, Permissions } from '../common/decorators';
 
 @ApiTags('Stock')
 @ApiBearerAuth('access-token')
@@ -14,29 +14,29 @@ export class StockController {
   @Get()
   @Permissions('stock')
   @ApiOperation({ summary: 'Get stock report for all products' })
-  async getStockReport(@Query() query: StockQueryDto) {
-    return this.stockService.getStockReport(query);
+  async getStockReport(@Query() query: StockQueryDto, @CurrentBranch() branchId?: string) {
+    return this.stockService.getStockReport(query, branchId);
   }
 
   @Get('low')
   @Permissions('low_stock_report')
   @ApiOperation({ summary: 'Get low stock products' })
-  async getLowStock(@Query() query: StockQueryDto) {
-    return this.stockService.getLowStock(query);
+  async getLowStock(@Query() query: StockQueryDto, @CurrentBranch() branchId?: string) {
+    return this.stockService.getLowStock(query, branchId);
   }
 
   @Get('ledger/:productId')
   @Permissions('stock')
   @ApiOperation({ summary: 'Get stock ledger for a product' })
-  async getProductLedger(@Param('productId') productId: string, @Query() query: StockQueryDto) {
-    return this.stockService.getProductLedger(productId, query);
+  async getProductLedger(@Param('productId') productId: string, @Query() query: StockQueryDto, @CurrentBranch() branchId?: string) {
+    return this.stockService.getProductLedger(productId, query, branchId);
   }
 
   @Post('adjust')
   @Permissions('barcode_add_stock')
   @ApiOperation({ summary: 'Manually adjust stock' })
-  async adjustStock(@Body() adjustStockDto: AdjustStockDto) {
-    return this.stockService.adjustStock(adjustStockDto);
+  async adjustStock(@Body() adjustStockDto: AdjustStockDto, @CurrentBranch() branchId?: string) {
+    return this.stockService.adjustStock(adjustStockDto, branchId);
   }
 
   @Post('opening/:productId')
@@ -46,7 +46,8 @@ export class StockController {
     @Param('productId') productId: string,
     @Body('quantity') quantity: number,
     @Body('note') note?: string,
+    @CurrentBranch() branchId?: string,
   ) {
-    return this.stockService.setOpeningStock(productId, quantity, note);
+    return this.stockService.setOpeningStock(productId, quantity, note, branchId);
   }
 }

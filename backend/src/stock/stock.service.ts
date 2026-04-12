@@ -9,7 +9,7 @@ import { StockLedgerType, StockLedgerSource } from '@prisma/client';
 export class StockService {
   constructor(private prisma: PrismaService) {}
 
-  async getStockReport(query: StockQueryDto) {
+  async getStockReport(query: StockQueryDto, branchId?: string) {
     const { page, limit, search, sortBy, sortOrder, categoryId } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
 
@@ -43,7 +43,7 @@ export class StockService {
     // Calculate stock for each product
     const productsWithStock = await Promise.all(
       products.map(async (product) => {
-        const stock = await this.calculateStock(product.id);
+        const stock = await this.calculateStock(product.id, branchId);
         const stockValue = Number(product.costPrice) * stock;
         return {
           ...product,
@@ -57,7 +57,7 @@ export class StockService {
     return paginate(productsWithStock, total, page!, limit!);
   }
 
-  async getLowStock(query: StockQueryDto) {
+  async getLowStock(query: StockQueryDto, branchId?: string) {
     const { page, limit } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
 
@@ -72,7 +72,7 @@ export class StockService {
 
     const productsWithStock = await Promise.all(
       products.map(async (product) => {
-        const stock = await this.calculateStock(product.id);
+        const stock = await this.calculateStock(product.id, branchId);
         return { ...product, stock };
       }),
     );
@@ -87,7 +87,7 @@ export class StockService {
     return paginate(paginatedProducts, lowStockProducts.length, page!, limit!);
   }
 
-  async getProductLedger(productId: string, query: StockQueryDto) {
+  async getProductLedger(productId: string, query: StockQueryDto, branchId?: string) {
     const { page, limit } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
 
@@ -101,25 +101,27 @@ export class StockService {
 
     const [ledger, total] = await Promise.all([
       this.prisma.stockLedger.findMany({
-        where: { productId },
+        where: { productId, ...(branchId ? { branchId } : {}) },
         skip,
         take,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.stockLedger.count({ where: { productId } }),
+      this.prisma.stockLedger.count({ where: { productId, ...(branchId ? { branchId } : {}) } }),
     ]);
 
     // Calculate running balance
     let runningBalance = 0;
     const ledgerWithBalance = ledger.reverse().map((entry) => {
-      runningBalance += entry.quantity;
+      const quantity = Math.abs(entry.quantity);
+      if (entry.type === StockLedgerType.OUT) runningBalance -= quantity;
+      else runningBalance += quantity;
       return { ...entry, balance: runningBalance };
     }).reverse();
 
     return paginate(ledgerWithBalance, total, page!, limit!);
   }
 
-  async adjustStock(adjustStockDto: AdjustStockDto) {
+  async adjustStock(adjustStockDto: AdjustStockDto, branchId?: string) {
     const { productId, quantity, type, note } = adjustStockDto;
 
     const product = await this.prisma.product.findFirst({
@@ -130,23 +132,22 @@ export class StockService {
       throw new NotFoundException('Product not found');
     }
 
-    const adjustedQuantity = type === 'IN' ? quantity : -quantity;
-
     await this.prisma.stockLedger.create({
       data: {
         productId,
         type: type === 'IN' ? StockLedgerType.IN : StockLedgerType.OUT,
         source: StockLedgerSource.ADJUSTMENT,
-        quantity: adjustedQuantity,
+        branchId,
+        quantity,
         note,
       },
     });
 
-    const newStock = await this.calculateStock(productId);
+    const newStock = await this.calculateStock(productId, branchId);
     return { message: 'Stock adjusted successfully', stock: newStock };
   }
 
-  async setOpeningStock(productId: string, quantity: number, note?: string) {
+  async setOpeningStock(productId: string, quantity: number, note?: string, branchId?: string) {
     const product = await this.prisma.product.findFirst({
       where: { id: productId, ...this.prisma.notDeleted() },
     });
@@ -160,6 +161,7 @@ export class StockService {
         productId,
         type: StockLedgerType.IN,
         source: StockLedgerSource.OPENING,
+        branchId,
         quantity,
         note: note || 'Opening stock',
       },
@@ -200,18 +202,23 @@ export class StockService {
         productId,
         type: StockLedgerType.OUT,
         source,
-        quantity: -quantity,
+        quantity,
         referenceId,
         note,
       },
     });
   }
 
-  private async calculateStock(productId: string): Promise<number> {
-    const result = await this.prisma.stockLedger.aggregate({
-      where: { productId },
-      _sum: { quantity: true },
+  private async calculateStock(productId: string, branchId?: string): Promise<number> {
+    const rows = await this.prisma.stockLedger.findMany({
+      where: { productId, ...(branchId ? { branchId } : {}) },
+      select: { type: true, quantity: true },
     });
-    return result._sum.quantity || 0;
+
+    return rows.reduce((sum, row) => {
+      const quantity = Math.abs(row.quantity);
+      if (row.type === StockLedgerType.OUT) return sum - quantity;
+      return sum + quantity;
+    }, 0);
   }
 }

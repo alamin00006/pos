@@ -37,6 +37,11 @@ export class CreateSalePaymentDto {
   @IsEnum(PaymentMethod)
   paymentMethod?: PaymentMethod;
 
+  @ApiPropertyOptional({ description: 'Bank account ID for non-cash payments' })
+  @IsOptional()
+  @IsUUID()
+  bankAccountId?: string;
+
   @ApiPropertyOptional({ description: 'Payment note' })
   @IsOptional()
   @IsString()
@@ -83,6 +88,11 @@ export class CreateSaleDto {
   @IsOptional()
   @IsEnum(PaymentMethod)
   paymentMethod?: PaymentMethod;
+
+  @ApiPropertyOptional({ description: 'Default bank account ID for non-cash payments' })
+  @IsOptional()
+  @IsUUID()
+  bankAccountId?: string;
 
   @ApiPropertyOptional({ description: 'Sale note' })
   @IsOptional()

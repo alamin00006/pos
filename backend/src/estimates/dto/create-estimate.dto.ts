@@ -10,7 +10,7 @@ import {
   ValidateNested,
   Min,
   IsDateString,
-  IsEnum,
+  IsIn,
 } from 'class-validator';
 
 export class EstimateItemDto {
@@ -72,7 +72,7 @@ export class CreateEstimateDto {
 
   @ApiPropertyOptional({ example: 'percentage' })
   @IsOptional()
-  @IsEnum(['fixed', 'percentage'])
+  @IsIn(['fixed', 'percentage'])
   discountType?: string;
 
   @ApiPropertyOptional({ example: 5 })
@@ -89,7 +89,7 @@ export class CreateEstimateDto {
 
   @ApiPropertyOptional({ example: 'pending' })
   @IsOptional()
-  @IsEnum(['draft', 'pending', 'sent', 'accepted', 'rejected', 'expired', 'converted'])
+  @IsIn(['draft', 'pending', 'sent', 'accepted', 'rejected', 'expired', 'converted'])
   status?: string;
 
   @ApiPropertyOptional({ example: 'Thank you for your business' })

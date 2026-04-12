@@ -16,7 +16,7 @@ import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { SupplierPaymentDto } from './dto/supplier-payment.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
-import { Permissions, CurrentUser } from '../common/decorators';
+import { CurrentBranch, Permissions, CurrentUser } from '../common/decorators';
 
 @ApiTags('Suppliers')
 @ApiBearerAuth('access-token')
@@ -27,22 +27,22 @@ export class SuppliersController {
   @Get()
   @Permissions('create_supplier')
   @ApiOperation({ summary: 'Get all suppliers' })
-  async findAll(@Query() query: PaginationDto) {
-    return this.suppliersService.findAll(query);
+  async findAll(@Query() query: PaginationDto, @CurrentBranch() branchId?: string) {
+    return this.suppliersService.findAll(query, branchId);
   }
 
   @Get('due-report')
   @Permissions('supplier_due_report')
   @ApiOperation({ summary: 'Get suppliers with due amounts' })
-  async getDueReport(@Query() query: PaginationDto) {
-    return this.suppliersService.getDueReport(query);
+  async getDueReport(@Query() query: PaginationDto, @CurrentBranch() branchId?: string) {
+    return this.suppliersService.getDueReport(query, branchId);
   }
 
   @Get(':id')
   @Permissions('create_supplier')
   @ApiOperation({ summary: 'Get supplier by ID' })
-  async findOne(@Param('id') id: string) {
-    return this.suppliersService.findOne(id);
+  async findOne(@Param('id') id: string, @CurrentBranch() branchId?: string) {
+    return this.suppliersService.findOne(id, branchId);
   }
 
   @Get(':id/ledger')
@@ -55,8 +55,8 @@ export class SuppliersController {
   @Post()
   @Permissions('add_supplier', 'create_supplier', 'purchase_add_supplier')
   @ApiOperation({ summary: 'Create new supplier' })
-  async create(@Body() createSupplierDto: CreateSupplierDto, @CurrentUser('sub') userId: string) {
-    return this.suppliersService.create(createSupplierDto, userId);
+  async create(@Body() createSupplierDto: CreateSupplierDto, @CurrentUser('sub') userId: string, @CurrentBranch() branchId?: string) {
+    return this.suppliersService.create(createSupplierDto, userId, branchId);
   }
 
   @Put(':id')

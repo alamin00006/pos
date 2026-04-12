@@ -1,50 +1,56 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { getPaginationMeta } from '../common/utils/pagination.util';
 import { Decimal } from '@prisma/client/runtime/library';
+import { nextDocumentNo } from '../common/utils/pos-accounting.util';
+import { CreateEstimateDto } from './dto';
 
 @Injectable()
 export class EstimatesService {
   constructor(private prisma: PrismaService) {}
 
-  private async generateEstimateNo(): Promise<string> {
-    const today = new Date();
-    const prefix = `EST${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}`;
-    const lastEstimate = await this.prisma.estimate.findFirst({
-      where: { estimateNo: { startsWith: prefix } },
-      orderBy: { estimateNo: 'desc' },
-    });
-    let sequence = 1;
-    if (lastEstimate) sequence = parseInt(lastEstimate.estimateNo.slice(-4)) + 1;
-    return `${prefix}${String(sequence).padStart(4, '0')}`;
-  }
+  async create(dto: CreateEstimateDto) {
+    const subtotal = dto.items.reduce((sum, item) => sum + item.quantity * item.unitPrice - (item.discount || 0), 0);
+    const discountAmount = dto.discountType === 'percentage' && dto.discount
+      ? (subtotal * dto.discount) / 100
+      : dto.discount || 0;
+    const taxAmount = dto.taxRate ? ((subtotal - discountAmount) * dto.taxRate) / 100 : 0;
+    const total = subtotal - discountAmount + taxAmount + (dto.shippingCost || 0);
 
-  async create(dto: any) {
-    const estimateNo = await this.generateEstimateNo();
-    const subtotal = dto.items.reduce((sum: number, item: any) => sum + item.quantity * item.unitPrice, 0);
-    const total = subtotal - (dto.discount || 0) + (dto.tax || 0);
+    return this.prisma.$transaction(async (tx) => {
+      const estimateNo = await nextDocumentNo(tx, 'estimate_number', 'estimate', 'estimateNo', 'EST');
+      const productIds = [...new Set(dto.items.map((item) => item.productId))];
+      const products = await tx.product.findMany({
+        where: { id: { in: productIds }, deletedAt: null },
+        select: { id: true, name: true },
+      });
+      if (products.length !== productIds.length) {
+        throw new BadRequestException('One or more products not found');
+      }
+      const productNameById = new Map(products.map((product) => [product.id, product.name]));
 
-    return this.prisma.estimate.create({
-      data: {
-        estimateNo,
-        customerId: dto.customerId,
-        subtotal: new Decimal(subtotal),
-        discount: new Decimal(dto.discount || 0),
-        tax: new Decimal(dto.tax || 0),
-        total: new Decimal(total),
-        note: dto.note,
-        validUntil: dto.validUntil ? new Date(dto.validUntil) : undefined,
-        estimateItems: {
-          create: dto.items.map((item: any) => ({
-            productName: item.productName,
-            quantity: item.quantity,
-            unitPrice: new Decimal(item.unitPrice),
-            total: new Decimal(item.quantity * item.unitPrice),
-          })),
+      return tx.estimate.create({
+        data: {
+          estimateNo,
+          customerId: dto.customerId,
+          subtotal: new Decimal(subtotal),
+          discount: new Decimal(discountAmount),
+          tax: new Decimal(taxAmount),
+          total: new Decimal(total),
+          note: dto.notes || dto.terms,
+          validUntil: dto.validUntil ? new Date(dto.validUntil) : undefined,
+          estimateItems: {
+            create: dto.items.map((item) => ({
+              productName: productNameById.get(item.productId) || item.productId,
+              quantity: item.quantity,
+              unitPrice: new Decimal(item.unitPrice),
+              total: new Decimal(item.quantity * item.unitPrice - (item.discount || 0)),
+            })),
+          },
         },
-      },
-      include: { customer: true, estimateItems: true },
+        include: { customer: true, estimateItems: true },
+      });
     });
   }
 
@@ -69,7 +75,7 @@ export class EstimatesService {
   }
 
   async findOne(id: string) {
-    const estimate = await this.prisma.estimate.findUnique({
+    const estimate = await this.prisma.estimate.findFirst({
       where: { id, deletedAt: null },
       include: { customer: true, estimateItems: true },
     });

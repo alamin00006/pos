@@ -327,6 +327,24 @@ async function main() {
     }),
   ]);
 
+  console.log("2.1) Default branch...");
+  const mainBranch = await prisma.branch.upsert({
+    where: { code: "MAIN" },
+    update: {
+      name: "Main Branch",
+      phone: "01700000000",
+      address: "Dhaka, Bangladesh",
+      isActive: true,
+    },
+    create: {
+      name: "Main Branch",
+      code: "MAIN",
+      phone: "01700000000",
+      address: "Dhaka, Bangladesh",
+      isActive: true,
+    },
+  });
+
   console.log("   Role permissions...");
   const allPermissions = await prisma.permission.findMany();
 
@@ -444,6 +462,24 @@ async function main() {
       },
       update: {},
       create: { userId: cashierUser.id, roleId: cashierRole.id },
+    }),
+  ]);
+
+  await prisma.$transaction([
+    prisma.userBranch.upsert({
+      where: { userId_branchId: { userId: adminUser.id, branchId: mainBranch.id } },
+      update: { isDefault: true },
+      create: { userId: adminUser.id, branchId: mainBranch.id, isDefault: true },
+    }),
+    prisma.userBranch.upsert({
+      where: { userId_branchId: { userId: staffUser.id, branchId: mainBranch.id } },
+      update: { isDefault: true },
+      create: { userId: staffUser.id, branchId: mainBranch.id, isDefault: true },
+    }),
+    prisma.userBranch.upsert({
+      where: { userId_branchId: { userId: cashierUser.id, branchId: mainBranch.id } },
+      update: { isDefault: true },
+      create: { userId: cashierUser.id, branchId: mainBranch.id, isDefault: true },
     }),
   ]);
 

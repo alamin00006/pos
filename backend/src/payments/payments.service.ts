@@ -2,8 +2,17 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { getPaginationMeta } from '../common/utils/pagination.util';
-import { PaymentMethod, PaymentStatus, CashBookType, CashBookSource, CustomerLedgerType, SupplierLedgerType } from '@prisma/client';
+import {
+  BankTransactionType,
+  PaymentMethod,
+  PaymentStatus,
+  CashBookType,
+  CashBookSource,
+  CustomerLedgerType,
+  SupplierLedgerType,
+} from '@prisma/client';
 import { CreatePaymentDto } from './dto';
+import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class PaymentsService {
@@ -35,6 +44,9 @@ export class PaymentsService {
   async create(dto: CreatePaymentDto) {
     const paymentDate = dto.date ? new Date(dto.date) : new Date();
     const paymentMethod = this.normalizePaymentMethod(dto.paymentMethod);
+    if (paymentMethod !== PaymentMethod.CASH && !dto.bankAccountId) {
+      throw new BadRequestException('Bank account is required for non-cash payments');
+    }
 
     return this.prisma.$transaction(async (tx) => {
       if (dto.saleId) {
@@ -42,6 +54,9 @@ export class PaymentsService {
         if (!sale) throw new NotFoundException('Sale not found');
         if (sale.paymentStatus === PaymentStatus.PAID) {
           throw new BadRequestException('Sale is already fully paid');
+        }
+        if (dto.amount > Number(sale.dueAmount)) {
+          throw new BadRequestException(`Payment amount cannot exceed due amount of ${sale.dueAmount}`);
         }
 
         const newPaidAmount = Number(sale.paidAmount) + dto.amount;
@@ -77,6 +92,17 @@ export class PaymentsService {
               description: `Sale payment - Invoice #${sale.invoiceNo}`,
             },
           });
+        }
+
+        if (paymentMethod !== PaymentMethod.CASH && dto.bankAccountId) {
+          await this.recordBankTransaction(
+            tx,
+            dto.bankAccountId,
+            dto.amount,
+            BankTransactionType.DEPOSIT,
+            sale.id,
+            `Sale payment - Invoice #${sale.invoiceNo}`,
+          );
         }
 
         if (sale.customerId) {
@@ -145,6 +171,17 @@ export class PaymentsService {
           });
         }
 
+        if (paymentMethod !== PaymentMethod.CASH && dto.bankAccountId) {
+          await this.recordBankTransaction(
+            tx,
+            dto.bankAccountId,
+            dto.amount,
+            BankTransactionType.WITHDRAW,
+            purchase.id,
+            `Purchase payment ${purchase.invoiceNo}`,
+          );
+        }
+
         if (purchase.supplierId) {
           const lastLedger = await tx.supplierLedger.findFirst({
             where: { supplierId: purchase.supplierId },
@@ -181,6 +218,42 @@ export class PaymentsService {
     });
   }
 
+  private async recordBankTransaction(
+    tx: any,
+    bankAccountId: string,
+    amount: number,
+    type: BankTransactionType,
+    referenceId: string,
+    description: string,
+  ) {
+    const account = await tx.bankAccount.findFirst({ where: { id: bankAccountId, deletedAt: null } });
+    if (!account) throw new NotFoundException('Bank account not found');
+
+    const currentBalance = Number(account.currentBalance);
+    if (type === BankTransactionType.WITHDRAW && currentBalance < amount) {
+      throw new BadRequestException('Insufficient bank balance');
+    }
+
+    const balanceAfter =
+      type === BankTransactionType.DEPOSIT ? currentBalance + amount : currentBalance - amount;
+
+    await tx.bankTransaction.create({
+      data: {
+        bankAccountId,
+        type,
+        amount: new Decimal(amount),
+        balanceAfter: new Decimal(balanceAfter),
+        referenceId,
+        description,
+      },
+    });
+
+    await tx.bankAccount.update({
+      where: { id: bankAccountId },
+      data: { currentBalance: new Decimal(balanceAfter) },
+    });
+  }
+
   async findAll(query: PaginationDto & { saleId?: string; purchaseId?: string; startDate?: string; endDate?: string }) {
     const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc', saleId, purchaseId, startDate, endDate } = query;
     const where: any = { deletedAt: null };
@@ -208,7 +281,7 @@ export class PaymentsService {
   }
 
   async findOne(id: string) {
-    const payment = await this.prisma.payment.findUnique({
+    const payment = await this.prisma.payment.findFirst({
       where: { id, deletedAt: null },
       include: { sale: true, purchase: true },
     });

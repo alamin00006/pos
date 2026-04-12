@@ -9,7 +9,7 @@ import {
   IsArray,
   ValidateNested,
   Min,
-  IsEnum,
+  IsIn,
 } from 'class-validator';
 
 export class ReturnItemDto {
@@ -53,7 +53,7 @@ export class CreateReturnDto {
 
   @ApiPropertyOptional({ example: 'exchange' })
   @IsOptional()
-  @IsEnum(['refund', 'exchange', 'credit'])
+  @IsIn(['refund', 'exchange', 'credit'])
   returnType?: string;
 
   @ApiPropertyOptional({ example: 'Customer requested refund due to size issue' })

@@ -7,7 +7,7 @@ import {
   IsUUID,
   Min,
   Max,
-  IsEnum,
+  IsIn,
 } from 'class-validator';
 
 export class CreateSalaryDto {
@@ -59,7 +59,7 @@ export class CreateSalaryDto {
 
   @ApiPropertyOptional({ example: 'cash' })
   @IsOptional()
-  @IsEnum(['cash', 'bank', 'cheque'])
+  @IsIn(['cash', 'bank', 'cheque'])
   paymentMethod?: string;
 
   @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440000' })

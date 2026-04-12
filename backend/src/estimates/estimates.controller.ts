@@ -4,6 +4,13 @@ import { EstimatesService } from './estimates.service';
 import { Permissions } from '../common/decorators';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { CreateEstimateDto, UpdateEstimateDto } from './dto';
+import { IsOptional, IsUUID } from 'class-validator';
+
+class EstimateQueryDto extends PaginationDto {
+  @IsOptional()
+  @IsUUID()
+  customerId?: string;
+}
 
 @ApiTags('Estimates')
 @ApiBearerAuth()
@@ -21,7 +28,7 @@ export class EstimatesController {
   @Get()
   @Permissions('view_estimate')
   @ApiOperation({ summary: 'Get all estimates' })
-  findAll(@Query() query: PaginationDto) {
+  findAll(@Query() query: EstimateQueryDto) {
     return this.service.findAll(query);
   }
 

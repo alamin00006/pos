@@ -60,7 +60,8 @@ export class ReportsService {
     const totalPurchases = Number(purchases._sum.total || 0);
     const totalExpenses = Number(expenses._sum.amount || 0);
     const totalReturns = Number(returns._sum.total || 0);
-    const profit = totalSales - totalPurchases - totalExpenses - totalReturns;
+    const costOfGoodsSold = await this.getCostOfGoodsSold(startDate, endDate);
+    const profit = totalSales - costOfGoodsSold - totalExpenses - totalReturns;
 
     return {
       date: startDate.toISOString().split('T')[0],
@@ -84,6 +85,7 @@ export class ReportsService {
         count: returns._count,
       },
       profit,
+      costOfGoodsSold,
     };
   }
 
@@ -118,13 +120,15 @@ export class ReportsService {
     const totalSales = sales.reduce((sum, s) => sum + Number(s.total), 0);
     const totalPurchases = purchases.reduce((sum, p) => sum + Number(p.total), 0);
     const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const costOfGoodsSold = await this.getCostOfGoodsSold(startDate, endDate);
 
     return {
       summary: {
         totalSales,
         totalPurchases,
         totalExpenses,
-        profit: totalSales - totalPurchases - totalExpenses,
+        costOfGoodsSold,
+        profit: totalSales - costOfGoodsSold - totalExpenses,
         salesCount: sales.length,
         purchasesCount: purchases.length,
         expensesCount: expenses.length,
@@ -172,7 +176,8 @@ export class ReportsService {
     const totalExpenses = Number(expenses._sum.amount || 0);
     const totalReturns = Number(returns._sum.total || 0);
     const totalDamages = Number(damages._sum.total || 0);
-    const profit = totalSales - totalPurchases - totalExpenses - totalReturns - totalDamages;
+    const costOfGoodsSold = await this.getCostOfGoodsSold(startDate, endDate);
+    const profit = totalSales - costOfGoodsSold - totalExpenses - totalReturns - totalDamages;
 
     return {
       month: startDate.toISOString().slice(0, 7),
@@ -201,6 +206,7 @@ export class ReportsService {
         total: totalDamages,
         count: damages._count,
       },
+      costOfGoodsSold,
       profit,
     };
   }
@@ -212,7 +218,7 @@ export class ReportsService {
     if (startDate) dateFilter.gte = startDate;
     if (endDate) dateFilter.lte = endDate;
 
-    const [salesData, purchaseData, expenseData, returnData, damageData] = await Promise.all([
+    const [salesData, soldItems, expenseData, returnData, damageData] = await Promise.all([
       this.prisma.sale.aggregate({
         where: { 
           ...(startDate || endDate ? { saleDate: dateFilter } : {}),
@@ -221,13 +227,15 @@ export class ReportsService {
         },
         _sum: { total: true, discount: true },
       }),
-      this.prisma.purchase.aggregate({
-        where: { 
-          ...(startDate || endDate ? { purchaseDate: dateFilter } : {}),
-          status: PurchaseStatus.RECEIVED, 
-          deletedAt: null 
+      this.prisma.saleItem.findMany({
+        where: {
+          sale: {
+            ...(startDate || endDate ? { saleDate: dateFilter } : {}),
+            status: SaleStatus.COMPLETED,
+            deletedAt: null,
+          },
         },
-        _sum: { total: true },
+        include: { product: { select: { costPrice: true } } },
       }),
       this.prisma.expense.aggregate({
         where: { 
@@ -254,7 +262,10 @@ export class ReportsService {
 
     const revenue = Number(salesData._sum.total || 0);
     const discounts = Number(salesData._sum.discount || 0);
-    const costOfGoodsSold = Number(purchaseData._sum.total || 0);
+    const costOfGoodsSold = soldItems.reduce(
+      (sum, item) => sum + Number(item.product.costPrice) * item.quantity,
+      0,
+    );
     const expenses = Number(expenseData._sum.amount || 0);
     const returns = Number(returnData._sum.total || 0);
     const damages = Number(damageData._sum.total || 0);
@@ -619,10 +630,10 @@ export class ReportsService {
       .map(product => {
         const stockIn = product.stockLedger
           .filter(s => s.type === 'IN')
-          .reduce((sum, s) => sum + s.quantity, 0);
+          .reduce((sum, s) => sum + Math.abs(s.quantity), 0);
         const stockOut = product.stockLedger
           .filter(s => s.type === 'OUT')
-          .reduce((sum, s) => sum + s.quantity, 0);
+          .reduce((sum, s) => sum + Math.abs(s.quantity), 0);
         const currentStock = stockIn - stockOut;
 
         return {
@@ -681,7 +692,8 @@ export class ReportsService {
     ]);
 
     const totalRevenue = Number(totalSales._sum.total || 0);
-    const totalCost = Number(totalPurchases._sum.total || 0) + Number(totalExpenses._sum.amount || 0);
+    const costOfGoodsSold = await this.getCostOfGoodsSold();
+    const totalCost = costOfGoodsSold + Number(totalExpenses._sum.amount || 0);
     const totalProfit = totalRevenue - totalCost - Number(totalReturns._sum.total || 0);
 
     return {
@@ -712,9 +724,29 @@ export class ReportsService {
       },
       financial: {
         totalRevenue,
+        costOfGoodsSold,
         totalCost,
         totalProfit,
       },
     };
+  }
+
+  private async getCostOfGoodsSold(startDate?: Date, endDate?: Date) {
+    const dateFilter: any = {};
+    if (startDate) dateFilter.gte = startDate;
+    if (endDate) dateFilter.lt = endDate;
+
+    const soldItems = await this.prisma.saleItem.findMany({
+      where: {
+        sale: {
+          ...(startDate || endDate ? { saleDate: dateFilter } : {}),
+          status: SaleStatus.COMPLETED,
+          deletedAt: null,
+        },
+      },
+      include: { product: { select: { costPrice: true } } },
+    });
+
+    return soldItems.reduce((sum, item) => sum + Number(item.product.costPrice) * item.quantity, 0);
   }
 }

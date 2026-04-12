@@ -46,7 +46,7 @@ export class AssetsService {
   }
 
   async findOne(id: string) {
-    const asset = await this.prisma.asset.findUnique({ where: { id, deletedAt: null } });
+    const asset = await this.prisma.asset.findFirst({ where: { id, deletedAt: null } });
     if (!asset) throw new NotFoundException('Asset not found');
     return asset;
   }

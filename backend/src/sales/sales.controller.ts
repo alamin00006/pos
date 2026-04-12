@@ -2,7 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpS
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { SalesService } from './sales.service';
 import { CreateSaleDto, UpdateSaleDto, SaleQueryDto, AddSalePaymentDto, RefundSaleDto } from './dto';
-import { Permissions, CurrentUser } from '../common/decorators';
+import { CurrentBranch, Permissions, CurrentUser } from '../common/decorators';
 
 @ApiTags('Sales')
 @ApiBearerAuth('access-token')
@@ -13,30 +13,30 @@ export class SalesController {
   @Get()
   @Permissions('sales_list', 'add_sale')
   @ApiOperation({ summary: 'Get all sales with pagination and filtering' })
-  async findAll(@Query() query: SaleQueryDto) {
-    return this.salesService.findAll(query);
+  async findAll(@Query() query: SaleQueryDto, @CurrentBranch() branchId?: string) {
+    return this.salesService.findAll(query, branchId);
   }
 
   @Get('today')
   @Permissions('today_sold', 'dashboard')
   @ApiOperation({ summary: 'Get today sales summary' })
-  async getTodaySales() {
-    return this.salesService.getTodaySales();
+  async getTodaySales(@CurrentBranch() branchId?: string) {
+    return this.salesService.getTodaySales(branchId);
   }
 
   @Get('report')
   @Permissions('sales_report')
   @ApiOperation({ summary: 'Get sales report with date range' })
-  async getSalesReport(@Query() query: SaleQueryDto) {
-    return this.salesService.getSalesReport(query);
+  async getSalesReport(@Query() query: SaleQueryDto, @CurrentBranch() branchId?: string) {
+    return this.salesService.getSalesReport(query, branchId);
   }
 
   @Get(':id')
   @Permissions('view_sale', 'sales_list')
   @ApiOperation({ summary: 'Get sale by ID' })
   @ApiParam({ name: 'id', description: 'Sale ID' })
-  async findOne(@Param('id') id: string) {
-    return this.salesService.findOne(id);
+  async findOne(@Param('id') id: string, @CurrentBranch() branchId?: string) {
+    return this.salesService.findOne(id, branchId);
   }
 
   @Get(':id/receipt')
@@ -50,8 +50,8 @@ export class SalesController {
   @Post()
   @Permissions('add_sale')
   @ApiOperation({ summary: 'Create new sale (POS)' })
-  async create(@Body() dto: CreateSaleDto, @CurrentUser('sub') userId: string) {
-    return this.salesService.create(dto, userId);
+  async create(@Body() dto: CreateSaleDto, @CurrentUser('sub') userId: string, @CurrentBranch() branchId?: string) {
+    return this.salesService.create(dto, userId, branchId);
   }
 
   @Put(':id')
@@ -75,8 +75,8 @@ export class SalesController {
   @Permissions('edit_sale_payment')
   @ApiOperation({ summary: 'Add payment to existing sale' })
   @ApiParam({ name: 'id', description: 'Sale ID' })
-  async addPayment(@Param('id') id: string, @Body() dto: AddSalePaymentDto) {
-    return this.salesService.addPayment(id, dto);
+  async addPayment(@Param('id') id: string, @Body() dto: AddSalePaymentDto, @CurrentBranch() branchId?: string) {
+    return this.salesService.addPayment(id, dto, branchId);
   }
 
   @Post(':id/duplicate')

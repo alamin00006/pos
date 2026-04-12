@@ -4,6 +4,28 @@ import { SalaryService } from './salary.service';
 import { Permissions } from '../common/decorators';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { CreateSalaryDto } from './dto';
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+
+class SalaryQueryDto extends PaginationDto {
+  @IsOptional()
+  @IsUUID()
+  employeeId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  month?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(2000)
+  @Max(2100)
+  year?: number;
+}
 
 @ApiTags('Salary')
 @ApiBearerAuth()
@@ -21,7 +43,7 @@ export class SalaryController {
   @Get()
   @Permissions('employee_salary')
   @ApiOperation({ summary: 'Get all salary payments' })
-  findAll(@Query() query: PaginationDto) {
+  findAll(@Query() query: SalaryQueryDto) {
     return this.service.findAll(query);
   }
 

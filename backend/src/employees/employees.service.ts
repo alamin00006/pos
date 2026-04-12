@@ -16,11 +16,12 @@ export class EmployeesService {
         phone: dto.phone,
         address: dto.address,
         nid: dto.nid,
+        ...(dto.nidNumber ? { nid: dto.nidNumber } : {}),
         designation: dto.designation,
         department: dto.department,
-        joinDate: dto.joinDate ? new Date(dto.joinDate) : new Date(),
-        basicSalary: new Decimal(dto.basicSalary || 0),
-        image: dto.image,
+        joinDate: dto.joinDate || dto.joiningDate ? new Date(dto.joinDate || dto.joiningDate) : new Date(),
+        basicSalary: new Decimal(dto.basicSalary || dto.salary || 0),
+        image: dto.image || dto.photo,
       },
     });
   }
@@ -52,7 +53,7 @@ export class EmployeesService {
   }
 
   async findOne(id: string) {
-    const employee = await this.prisma.employee.findUnique({
+    const employee = await this.prisma.employee.findFirst({
       where: { id, deletedAt: null },
       include: { salaryPayments: { orderBy: { paymentDate: 'desc' }, take: 12 } },
     });
@@ -62,7 +63,28 @@ export class EmployeesService {
 
   async update(id: string, dto: any) {
     await this.findOne(id);
-    return this.prisma.employee.update({ where: { id }, data: dto });
+    const data = { ...dto };
+    if (data.nidNumber) {
+      data.nid = data.nidNumber;
+      delete data.nidNumber;
+    }
+    if (data.joiningDate) {
+      data.joinDate = new Date(data.joiningDate);
+      delete data.joiningDate;
+    }
+    if (data.salary !== undefined) {
+      data.basicSalary = new Decimal(data.salary);
+      delete data.salary;
+    }
+    if (data.photo) {
+      data.image = data.photo;
+      delete data.photo;
+    }
+    delete data.status;
+    delete data.employeeId;
+    delete data.emergencyContact;
+    delete data.notes;
+    return this.prisma.employee.update({ where: { id }, data });
   }
 
   async remove(id: string) {

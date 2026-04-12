@@ -6,7 +6,7 @@ import {
   IsNumber,
   IsDateString,
   Min,
-  IsEnum,
+  IsIn,
 } from 'class-validator';
 
 export class CreateAssetDto {
@@ -49,12 +49,12 @@ export class CreateAssetDto {
 
   @ApiPropertyOptional({ example: 'straight_line' })
   @IsOptional()
-  @IsEnum(['straight_line', 'declining_balance', 'none'])
+  @IsIn(['straight_line', 'declining_balance', 'none'])
   depreciationMethod?: string;
 
   @ApiPropertyOptional({ example: 'active' })
   @IsOptional()
-  @IsEnum(['active', 'maintenance', 'disposed', 'sold'])
+  @IsIn(['active', 'maintenance', 'disposed', 'sold'])
   status?: string;
 
   @ApiPropertyOptional({ example: 'Main Office - Room 101' })

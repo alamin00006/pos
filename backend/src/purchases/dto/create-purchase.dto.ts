@@ -68,6 +68,11 @@ export class CreatePurchaseDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsUUID()
+  bankAccountId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
   note?: string;
 }

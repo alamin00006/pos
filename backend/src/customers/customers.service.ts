@@ -11,10 +11,10 @@ import { CustomerLedgerType, CashBookType, CashBookSource } from '@prisma/client
 export class CustomersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(query: PaginationDto) {
+  async findAll(query: PaginationDto, branchId?: string) {
     const { page, limit, search, sortBy, sortOrder } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
-    const where = { ...this.prisma.notDeleted(), ...buildSearchQuery(search, ['name', 'email', 'phone']) };
+    const where = { ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}), ...buildSearchQuery(search, ['name', 'email', 'phone']) };
     const [customers, total] = await Promise.all([
       this.prisma.customer.findMany({ where, skip, take, orderBy: buildOrderByQuery(sortBy, sortOrder) }),
       this.prisma.customer.count({ where }),
@@ -23,16 +23,16 @@ export class CustomersService {
     return paginate(customersWithDue, total, page!, limit!);
   }
 
-  async getDueReport(query: PaginationDto) {
+  async getDueReport(query: PaginationDto, branchId?: string) {
     const { page, limit } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
-    const customers = await this.prisma.customer.findMany({ where: this.prisma.notDeleted() });
+    const customers = await this.prisma.customer.findMany({ where: { ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}) } });
     const customersWithDue = (await Promise.all(customers.map(async (c) => ({ ...c, due: await this.calculateDue(c.id) })))).filter((c) => c.due > 0);
     return paginate(customersWithDue.slice(skip, skip + take), customersWithDue.length, page!, limit!);
   }
 
-  async findOne(id: string) {
-    const customer = await this.prisma.customer.findFirst({ where: { id, ...this.prisma.notDeleted() } });
+  async findOne(id: string, branchId?: string) {
+    const customer = await this.prisma.customer.findFirst({ where: { id, ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}) } });
     if (!customer) throw new NotFoundException('Customer not found');
     return { ...customer, due: await this.calculateDue(id) };
   }
@@ -48,8 +48,8 @@ export class CustomersService {
     return paginate(ledger, total, page!, limit!);
   }
 
-  async create(dto: CreateCustomerDto, userId?: string) {
-    const customer = await this.prisma.customer.create({ data: { ...dto, createdById: userId } });
+  async create(dto: CreateCustomerDto, userId?: string, branchId?: string) {
+    const customer = await this.prisma.customer.create({ data: { ...dto, createdById: userId, branchId } as any });
     if (dto.openingBalance && Number(dto.openingBalance) > 0) {
       await this.prisma.customerLedger.create({ data: { customerId: customer.id, type: CustomerLedgerType.OPENING_BALANCE, amount: dto.openingBalance, balance: dto.openingBalance, note: 'Opening balance' } });
     }

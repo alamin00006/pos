@@ -4,6 +4,25 @@ import { ExpensesService } from './expenses.service';
 import { Permissions } from '../common/decorators';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { CreateExpenseDto, UpdateExpenseDto } from './dto';
+import { IsDateString, IsOptional, IsUUID } from 'class-validator';
+
+class ExpenseQueryDto extends PaginationDto {
+  @IsOptional()
+  @IsUUID()
+  expenseCategoryId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+}
 
 @ApiTags('Expenses')
 @ApiBearerAuth()
@@ -21,7 +40,7 @@ export class ExpensesController {
   @Get()
   @Permissions('create_expense')
   @ApiOperation({ summary: 'Get all expenses' })
-  findAll(@Query() query: PaginationDto) {
+  findAll(@Query() query: ExpenseQueryDto) {
     return this.service.findAll(query);
   }
 

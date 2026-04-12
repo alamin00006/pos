@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateSaleDto, UpdateSaleDto, SaleQueryDto, AddSalePaymentDto, RefundSaleDto } from './dto';
 import { paginate, buildPaginationQuery, buildOrderByQuery } from '../common/utils/pagination.util';
 import { 
+  BankTransactionType,
   SaleStatus, 
   PaymentStatus, 
   PaymentMethod, 
@@ -13,16 +14,22 @@ import {
   CashBookSource 
 } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import {
+  addCashBookEntry,
+  calculateStock as calculateStockFromLedger,
+  nextDocumentNo,
+  recordBankTransaction,
+} from '../common/utils/pos-accounting.util';
 
 @Injectable()
 export class SalesService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(query: SaleQueryDto) {
+  async findAll(query: SaleQueryDto, branchId?: string) {
     const { page, limit, sortBy, sortOrder, invoiceNo, customerId, userId, startDate, endDate, status, paymentStatus } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
     
-    const where: any = { ...this.prisma.notDeleted() };
+    const where: any = { ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}) };
     
     if (invoiceNo) where.invoiceNo = { contains: invoiceNo, mode: 'insensitive' };
     if (customerId) where.customerId = customerId;
@@ -45,7 +52,7 @@ export class SalesService {
           customer: { select: { id: true, name: true, phone: true } },
           user: { select: { id: true, name: true } },
           saleItems: {
-            include: { product: { select: { id: true, name: true, productCode: true } } }
+            include: { product: { select: { id: true, name: true, productCode: true, costPrice: true } } }
           },
           _count: { select: { payments: true } }
         }
@@ -54,7 +61,7 @@ export class SalesService {
     ]);
 
     const salesWithProfit = sales.map(sale => {
-      const costPrice = sale.saleItems.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0);
+      const costPrice = sale.saleItems.reduce((sum, item) => sum + Number(item.product.costPrice) * item.quantity, 0);
       const profit = Number(sale.total) - costPrice;
       return { ...sale, profit };
     });
@@ -62,9 +69,9 @@ export class SalesService {
     return paginate(salesWithProfit, total, page!, limit!);
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, branchId?: string) {
     const sale = await this.prisma.sale.findFirst({
-      where: { id, ...this.prisma.notDeleted() },
+      where: { id, ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}) },
       include: {
         customer: true,
         user: { select: { id: true, name: true, email: true } },
@@ -87,12 +94,9 @@ export class SalesService {
     return { sale, company: settings };
   }
 
-  async create(dto: CreateSaleDto, userId?: string) {
+  async create(dto: CreateSaleDto, userId?: string, branchId?: string) {
     return this.prisma.$transaction(async (tx) => {
-      // Generate invoice number
-      const lastSale = await tx.sale.findFirst({ orderBy: { createdAt: 'desc' }, select: { invoiceNo: true } });
-      const nextNum = lastSale ? parseInt(lastSale.invoiceNo) + 1 : 1;
-      const invoiceNo = String(nextNum).padStart(6, '0');
+      const invoiceNo = await nextDocumentNo(tx, 'sale_invoice', 'sale', 'invoiceNo', 'SAL');
 
       // Calculate totals
       let subtotal = 0;
@@ -101,6 +105,28 @@ export class SalesService {
         subtotal += itemTotal;
         return { ...item, total: itemTotal };
       });
+
+      const productIds = [...new Set(dto.items.map((item) => item.productId))];
+      const products = await tx.product.findMany({
+        where: { id: { in: productIds }, ...this.prisma.notDeleted() },
+        select: { id: true, name: true },
+      });
+      if (products.length !== productIds.length) {
+        throw new BadRequestException('One or more products not found');
+      }
+
+      const productNameById = new Map(products.map((product) => [product.id, product.name]));
+      for (const productId of productIds) {
+        const requestedQty = dto.items
+          .filter((item) => item.productId === productId)
+          .reduce((sum, item) => sum + item.quantity, 0);
+        const currentStock = await calculateStockFromLedger(tx, productId, branchId);
+        if (requestedQty > currentStock) {
+          throw new BadRequestException(
+            `Insufficient stock for ${productNameById.get(productId) || productId}. Available: ${currentStock}, requested: ${requestedQty}`,
+          );
+        }
+      }
 
       // Calculate discount
       let discountAmount = dto.discount || 0;
@@ -115,6 +141,12 @@ export class SalesService {
       let paidAmount = 0;
       if (dto.payments && dto.payments.length > 0) {
         paidAmount = dto.payments.reduce((sum, p) => sum + p.amount, 0);
+        for (const payment of dto.payments) {
+          const method = payment.paymentMethod || PaymentMethod.CASH;
+          if (method !== PaymentMethod.CASH && !payment.bankAccountId && !dto.bankAccountId) {
+            throw new BadRequestException('Bank account is required for non-cash sale payments');
+          }
+        }
       }
       const dueAmount = Math.max(0, total - paidAmount);
       const changeAmount = paidAmount > total ? paidAmount - total : 0;
@@ -130,6 +162,7 @@ export class SalesService {
           invoiceNo,
           customerId: dto.customerId,
           userId,
+          branchId,
           subtotal,
           discount: discountAmount,
           discountType: dto.discountType || 'fixed',
@@ -163,25 +196,34 @@ export class SalesService {
             data: {
               saleId: sale.id,
               customerId: dto.customerId,
+              branchId,
               amount: payment.amount,
               paymentMethod: payment.paymentMethod || PaymentMethod.CASH,
               note: payment.note
             }
           });
 
-          // Record in CashBook if cash payment
           if ((payment.paymentMethod || PaymentMethod.CASH) === PaymentMethod.CASH) {
-            const lastCashEntry = await tx.cashBook.findFirst({ orderBy: { createdAt: 'desc' } });
-            await tx.cashBook.create({
-              data: {
-                type: CashBookType.IN,
-                source: CashBookSource.SALE,
-                referenceId: sale.id,
-                amount: payment.amount,
-                balance: (Number(lastCashEntry?.balance) || 0) + payment.amount,
-                description: `Sale payment - Invoice #${invoiceNo}`
-              }
-            });
+            await addCashBookEntry(
+              tx,
+              CashBookType.IN,
+              CashBookSource.SALE,
+              sale.id,
+              payment.amount,
+              `Sale payment - Invoice #${invoiceNo}`,
+              branchId,
+            );
+          } else {
+            const bankAccountId = payment.bankAccountId || dto.bankAccountId;
+            if (!bankAccountId) continue;
+            await recordBankTransaction(
+              tx,
+              bankAccountId,
+              payment.amount,
+              BankTransactionType.DEPOSIT,
+              sale.id,
+              `Sale payment - Invoice #${invoiceNo}`,
+            );
           }
         }
       }
@@ -191,6 +233,7 @@ export class SalesService {
         await tx.stockLedger.create({
           data: {
             productId: item.productId,
+            branchId,
             type: StockLedgerType.OUT,
             source: StockLedgerSource.SALE,
             referenceId: sale.id,
@@ -239,21 +282,99 @@ export class SalesService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    await this.prisma.sale.update({
-      where: { id },
-      data: this.prisma.softDelete()
+    return this.prisma.$transaction(async (tx) => {
+      const sale = await tx.sale.findFirst({
+        where: { id, ...this.prisma.notDeleted() },
+        include: {
+          saleItems: true,
+          payments: { where: { deletedAt: null } },
+          returns: {
+            where: { deletedAt: null },
+            include: { returnItems: true },
+          },
+        },
+      });
+      if (!sale) throw new NotFoundException('Sale not found');
+
+      for (const item of sale.saleItems) {
+        await tx.stockLedger.create({
+          data: {
+            productId: item.productId,
+            type: StockLedgerType.IN,
+            source: StockLedgerSource.ADJUSTMENT,
+            referenceId: sale.id,
+            quantity: item.quantity,
+            note: `Sale delete reversal - Invoice #${sale.invoiceNo}`,
+          },
+        });
+      }
+
+      for (const saleReturn of sale.returns) {
+        for (const item of saleReturn.returnItems) {
+          await tx.stockLedger.create({
+            data: {
+              productId: item.productId,
+              type: StockLedgerType.OUT,
+              source: StockLedgerSource.ADJUSTMENT,
+              referenceId: saleReturn.id,
+              quantity: item.quantity,
+              note: `Return delete reversal - Invoice #${sale.invoiceNo}`,
+            },
+          });
+        }
+        await tx.return.update({ where: { id: saleReturn.id }, data: this.prisma.softDelete() });
+      }
+
+      const cashPaid = sale.payments
+        .filter((payment) => payment.paymentMethod === PaymentMethod.CASH)
+        .reduce((sum, payment) => sum + Number(payment.amount), 0);
+      if (cashPaid > 0) {
+        await addCashBookEntry(
+          tx,
+          CashBookType.OUT,
+          CashBookSource.OTHER,
+          sale.id,
+          cashPaid,
+          `Sale delete payment reversal - Invoice #${sale.invoiceNo}`,
+        );
+      }
+
+      if (sale.customerId && Number(sale.dueAmount) > 0) {
+        const currentDue = await this.getCustomerDue(tx, sale.customerId);
+        await tx.customerLedger.create({
+          data: {
+            customerId: sale.customerId,
+            type: CustomerLedgerType.RETURN_ADJUST,
+            referenceId: sale.id,
+            amount: sale.dueAmount,
+            balance: currentDue - Number(sale.dueAmount),
+            note: `Sale delete due reversal - Invoice #${sale.invoiceNo}`,
+          },
+        });
+      }
+
+      await tx.payment.updateMany({ where: { saleId: id, deletedAt: null }, data: this.prisma.softDelete() });
+      await tx.sale.update({ where: { id }, data: this.prisma.softDelete() });
+
+      return { message: 'Sale deleted successfully' };
     });
-    return { message: 'Sale deleted successfully' };
   }
 
-  async addPayment(saleId: string, dto: AddSalePaymentDto) {
+  async addPayment(saleId: string, dto: AddSalePaymentDto, branchId?: string) {
     return this.prisma.$transaction(async (tx) => {
-      const sale = await tx.sale.findFirst({ where: { id: saleId, ...this.prisma.notDeleted() } });
+      const sale = await tx.sale.findFirst({ where: { id: saleId, ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}) } });
       if (!sale) throw new NotFoundException('Sale not found');
 
       if (sale.paymentStatus === PaymentStatus.PAID) {
         throw new BadRequestException('Sale is already fully paid');
+      }
+
+      if (dto.amount > Number(sale.dueAmount)) {
+        throw new BadRequestException(`Payment amount cannot exceed due amount of ${sale.dueAmount}`);
+      }
+
+      if ((dto.paymentMethod || PaymentMethod.CASH) !== PaymentMethod.CASH && !dto.bankAccountId) {
+        throw new BadRequestException('Bank account is required for non-cash sale payments');
       }
 
       const newPaidAmount = Number(sale.paidAmount) + dto.amount;
@@ -267,6 +388,7 @@ export class SalesService {
         data: {
           saleId,
           customerId: sale.customerId,
+          branchId: sale.branchId,
           amount: dto.amount,
           paymentMethod: dto.paymentMethod || PaymentMethod.CASH,
           note: dto.note,
@@ -282,17 +404,24 @@ export class SalesService {
 
       // Record in CashBook if cash
       if ((dto.paymentMethod || PaymentMethod.CASH) === PaymentMethod.CASH) {
-        const lastCashEntry = await tx.cashBook.findFirst({ orderBy: { createdAt: 'desc' } });
-        await tx.cashBook.create({
-          data: {
-            type: CashBookType.IN,
-            source: CashBookSource.SALE,
-            referenceId: saleId,
-            amount: dto.amount,
-            balance: (Number(lastCashEntry?.balance) || 0) + dto.amount,
-            description: `Sale payment - Invoice #${sale.invoiceNo}`
-          }
-        });
+        await addCashBookEntry(
+          tx,
+          CashBookType.IN,
+          CashBookSource.SALE,
+          saleId,
+          dto.amount,
+          `Sale payment - Invoice #${sale.invoiceNo}`,
+          sale.branchId || undefined,
+        );
+      } else if (dto.bankAccountId) {
+        await recordBankTransaction(
+          tx,
+          dto.bankAccountId,
+          dto.amount,
+          BankTransactionType.DEPOSIT,
+          saleId,
+          `Sale payment - Invoice #${sale.invoiceNo}`,
+        );
       }
 
       // Update customer ledger if customer exists
@@ -339,14 +468,40 @@ export class SalesService {
     return this.prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findFirst({
         where: { id: saleId, ...this.prisma.notDeleted() },
-        include: { saleItems: true }
+        include: {
+          saleItems: true,
+          returns: {
+            where: { deletedAt: null },
+            include: { returnItems: true },
+          },
+        }
       });
       if (!sale) throw new NotFoundException('Sale not found');
+      if (sale.status === SaleStatus.REFUNDED) {
+        throw new BadRequestException('Sale is already fully refunded');
+      }
+
+      const soldQty = new Map<string, number>();
+      for (const item of sale.saleItems) {
+        soldQty.set(item.productId, (soldQty.get(item.productId) || 0) + item.quantity);
+      }
+
+      const returnedQty = new Map<string, number>();
+      for (const saleReturn of sale.returns) {
+        for (const item of saleReturn.returnItems) {
+          returnedQty.set(item.productId, (returnedQty.get(item.productId) || 0) + item.quantity);
+        }
+      }
+
+      for (const item of dto.items) {
+        const remainingQty = (soldQty.get(item.productId) || 0) - (returnedQty.get(item.productId) || 0);
+        if (item.quantity > remainingQty) {
+          throw new BadRequestException(`Return quantity exceeds sold quantity for product ${item.productId}`);
+        }
+      }
 
       // Generate return number
-      const lastReturn = await tx.return.findFirst({ orderBy: { createdAt: 'desc' }, select: { returnNo: true } });
-      const nextNum = lastReturn ? parseInt(lastReturn.returnNo.replace('RTN-', '')) + 1 : 1;
-      const returnNo = `RTN-${String(nextNum).padStart(6, '0')}`;
+      const returnNo = await nextDocumentNo(tx, 'return_number', 'return', 'returnNo', 'RET');
 
       // Calculate return total
       const returnTotal = dto.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
@@ -401,22 +556,32 @@ export class SalesService {
 
       // Update sale status if fully refunded
       const totalRefunded = await tx.returnItem.aggregate({
-        where: { return: { saleId } },
+        where: { return: { saleId, deletedAt: null } },
         _sum: { total: true }
       });
 
-      if (Number(totalRefunded._sum.total) >= Number(sale.total)) {
-        await tx.sale.update({
-          where: { id: saleId },
-          data: { status: SaleStatus.REFUNDED }
-        });
-      }
+      const refundedAmount = Number(totalRefunded._sum.total || 0);
+      const effectiveSaleTotal = Math.max(0, Number(sale.total) - refundedAmount);
+      const newPaidAmount = Math.min(Number(sale.paidAmount), effectiveSaleTotal);
+      const newDueAmount = Math.max(0, effectiveSaleTotal - newPaidAmount);
+      const paymentStatus =
+        newDueAmount <= 0 ? PaymentStatus.PAID : newPaidAmount > 0 ? PaymentStatus.PARTIAL : PaymentStatus.PENDING;
+
+      await tx.sale.update({
+        where: { id: saleId },
+        data: {
+          paidAmount: newPaidAmount,
+          dueAmount: newDueAmount,
+          paymentStatus,
+          status: refundedAmount >= Number(sale.total) ? SaleStatus.REFUNDED : sale.status,
+        }
+      });
 
       return saleReturn;
     });
   }
 
-  async getTodaySales() {
+  async getTodaySales(branchId?: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -425,6 +590,7 @@ export class SalesService {
     const sales = await this.prisma.sale.findMany({
       where: {
         saleDate: { gte: today, lt: tomorrow },
+        ...(branchId ? { branchId } : {}),
         ...this.prisma.notDeleted()
       },
       include: { saleItems: { include: { product: true } }, customer: true }
@@ -437,9 +603,9 @@ export class SalesService {
     return { count: sales.length, totalSold, totalReceived, totalDue, sales };
   }
 
-  async getSalesReport(query: SaleQueryDto) {
+  async getSalesReport(query: SaleQueryDto, branchId?: string) {
     const { startDate, endDate, customerId } = query;
-    const where: any = { ...this.prisma.notDeleted() };
+    const where: any = { ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}) };
     
     if (startDate || endDate) {
       where.saleDate = {};
@@ -492,4 +658,5 @@ export class SalesService {
     });
     return Number(ledger[0]?.balance) || 0;
   }
+
 }
