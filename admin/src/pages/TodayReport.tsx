@@ -8,10 +8,10 @@ const TodayReport = () => {
   const [activeTab, setActiveTab] = useState("today");
 
   const summaryCards = [
-    { label: "SALE AMOUNT", value: "Tk 0", bg: "bg-[hsl(172,66%,40%)]" },
-    { label: "PURCHASE COST", value: "Tk 0", bg: "bg-[hsl(15,70%,55%)]" },
-    { label: "EXPENSE", value: "Tk 0", bg: "bg-[hsl(200,15%,45%)]" },
-    { label: "SELL PROFIT", value: "Tk 0", bg: "bg-[hsl(0,70%,55%)]" },
+    { label: "SALE AMOUNT", value: "Tk 0" },
+    { label: "PURCHASE COST", value: "Tk 0" },
+    { label: "EXPENSE", value: "Tk 0" },
+    { label: "SELL PROFIT", value: "Tk 0" },
   ];
 
   const topSaleColumns = [
@@ -87,12 +87,14 @@ const TodayReport = () => {
               {summaryCards.map((card) => (
                 <div
                   key={card.label}
-                  className={`${card.bg} rounded-md p-4 text-white`}
+                  className="rounded-md border border-border bg-card p-4 shadow-sm"
                 >
-                  <p className="text-xs font-medium opacity-90 mb-1">
+                  <p className="text-xs font-semibold text-muted-foreground mb-1">
                     {card.label}
                   </p>
-                  <p className="text-xl font-bold">{card.value}</p>
+                  <p className="text-xl font-bold text-foreground">
+                    {card.value}
+                  </p>
                 </div>
               ))}
             </div>
@@ -157,7 +159,7 @@ const TodayReport = () => {
         {/* Footer */}
         <footer className="text-center text-sm text-muted-foreground pt-4 border-t border-border">
           Copyright © 2026{" "}
-          <span className="text-primary font-medium">SOFTGHOR</span>. All rights
+          <span className="text-primary font-medium">POS Software</span>. All rights
           reserved.
         </footer>
       </div>

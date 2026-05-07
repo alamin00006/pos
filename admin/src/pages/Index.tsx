@@ -15,7 +15,7 @@ const Index = () => {
         <p>
           Copyright © 2026{" "}
           <a href="#" className="text-primary hover:underline">
-            SoftGhor
+            POS Software
           </a>
           . All rights reserved.
         </p>

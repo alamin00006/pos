@@ -5,10 +5,16 @@ import { UpdateSubcategoryDto } from './dto/update-subcategory.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { paginate, buildPaginationQuery, buildOrderByQuery, buildSearchQuery } from '../common/utils/pagination.util';
 
+/**
+ * Coordinates Subcategories business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class SubcategoriesService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Retrieves filtered Subcategories records for API consumers.
+   */
   async findAll(query: PaginationDto) {
     const { page, limit, search, sortBy, sortOrder } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -43,6 +49,9 @@ export class SubcategoriesService {
     return paginate(formatted, total, page!, limit!);
   }
 
+  /**
+   * Handles the find by category workflow for Subcategories records.
+   */
   async findByCategory(categoryId: string) {
     return this.prisma.subcategory.findMany({
       where: {
@@ -53,6 +62,9 @@ export class SubcategoriesService {
     });
   }
 
+  /**
+   * Retrieves a single Subcategories record by identifier.
+   */
   async findOne(id: string) {
     const subcategory = await this.prisma.subcategory.findFirst({
       where: { id, ...this.prisma.notDeleted() },
@@ -68,6 +80,9 @@ export class SubcategoriesService {
     return subcategory;
   }
 
+  /**
+   * Creates a new Subcategories record after validating the request payload.
+   */
   async create(createSubcategoryDto: CreateSubcategoryDto) {
     // Check if category exists
     const category = await this.prisma.category.findFirst({
@@ -99,6 +114,9 @@ export class SubcategoriesService {
     });
   }
 
+  /**
+   * Updates an existing Subcategories record with the provided changes.
+   */
   async update(id: string, updateSubcategoryDto: UpdateSubcategoryDto) {
     await this.findOne(id);
 
@@ -111,6 +129,9 @@ export class SubcategoriesService {
     });
   }
 
+  /**
+   * Removes an existing Subcategories record while preserving business consistency.
+   */
   async remove(id: string) {
     await this.findOne(id);
     await this.prisma.subcategory.update({

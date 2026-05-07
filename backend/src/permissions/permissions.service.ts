@@ -3,10 +3,16 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { paginate, buildPaginationQuery, buildOrderByQuery, buildSearchQuery } from '../common/utils/pagination.util';
 
+/**
+ * Coordinates Permissions business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class PermissionsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Retrieves filtered Permissions records for API consumers.
+   */
   async findAll(query: PaginationDto) {
     const { page, limit, search, sortBy, sortOrder } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -28,6 +34,9 @@ export class PermissionsService {
     return paginate(permissions, total, page!, limit!);
   }
 
+  /**
+   * Handles the find all grouped workflow for Permissions records.
+   */
   async findAllGrouped() {
     const permissions = await this.prisma.permission.findMany({
       orderBy: [{ module: 'asc' }, { key: 'asc' }],
@@ -46,6 +55,9 @@ export class PermissionsService {
     return grouped;
   }
 
+  /**
+   * Handles the find by key workflow for Permissions records.
+   */
   async findByKey(key: string) {
     return this.prisma.permission.findUnique({
       where: { key },

@@ -68,7 +68,7 @@ export const brandsApi = baseApi.injectEndpoints({
     }),
 
     /* =======================
-       DELETE BRAND (SOFT)
+       DELETE BRAND
     ======================== */
     deleteBrand: builder.mutation<
       { success: boolean; message: string },

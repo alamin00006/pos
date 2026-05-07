@@ -12,23 +12,18 @@
   --color-card-foreground: hsl(var(--card-foreground));
   --color-popover: hsl(var(--popover));
   --color-popover-foreground: hsl(var(--popover-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
   --color-sidebar: hsl(var(--sidebar-background));
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
-  --color-sidebar-primary: hsl(var(--sidebar-primary));
-  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
   --color-sidebar-accent: hsl(var(--sidebar-accent));
   --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
   --color-sidebar-border: hsl(var(--sidebar-border));
@@ -46,6 +41,28 @@
   --animate-fade-in: fade-in 0.5s ease-out forwards;
   --animate-slide-in-left: slide-in-left 0.5s ease-out forwards;
   --animate-slide-in-right: slide-in-right 0.5s ease-out forwards;
+}
+
+@theme inline {
+  --color-primary: var(--primary, #16a34a);
+  --color-primary-foreground: var(--primary-foreground, #ffffff);
+  --color-ring: var(--ring, var(--primary, #16a34a));
+  --color-accent: color-mix(in oklab, var(--primary, #16a34a) 12%, white);
+  --color-accent-foreground: var(--primary, #16a34a);
+  --color-sidebar-primary: var(--sidebar-primary, var(--primary, #16a34a));
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground, #ffffff);
+
+  --color-primary-50: color-mix(in oklab, var(--primary, #16a34a) 10%, white);
+  --color-primary-100: color-mix(in oklab, var(--primary, #16a34a) 20%, white);
+  --color-primary-200: color-mix(in oklab, var(--primary, #16a34a) 30%, white);
+  --color-primary-300: color-mix(in oklab, var(--primary, #16a34a) 40%, white);
+  --color-primary-400: color-mix(in oklab, var(--primary, #16a34a) 60%, white);
+  --color-primary-500: var(--primary, #16a34a);
+  --color-primary-600: color-mix(in oklab, var(--primary, #16a34a) 80%, black);
+  --color-primary-700: color-mix(in oklab, var(--primary, #16a34a) 70%, black);
+  --color-primary-800: color-mix(in oklab, var(--primary, #16a34a) 80%, black);
+  --color-primary-900: color-mix(in oklab, var(--primary, #16a34a) 90%, black);
+  --color-primary-950: color-mix(in oklab, var(--primary, #16a34a) 95%, black);
 }
 
 /* POS System Design System */
@@ -103,8 +120,8 @@
 
 @layer base {
   :root {
-    --background: 220 14% 96%;
-    --foreground: 222 47% 11%;
+    --background: 210 20% 98%;
+    --foreground: 215 22% 15%;
 
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
@@ -112,36 +129,36 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 172 66% 50%;
-    --primary-foreground: 0 0% 100%;
+    --primary: #16a34a;
+    --primary-foreground: #ffffff;
 
-    --secondary: 220 16% 95%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 210 16% 94%;
+    --secondary-foreground: 215 22% 15%;
 
-    --muted: 220 16% 93%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 210 16% 93%;
+    --muted-foreground: 215 10% 43%;
 
-    --accent: var(--primary);
-    --accent-foreground: var(--primary-foreground);
+    --accent: color-mix(in oklab, var(--primary) 12%, white);
+    --accent-foreground: var(--primary);
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 14% 90%;
-    --input: 220 14% 90%;
-    --ring: 172 66% 50%;
+    --border: 214 16% 88%;
+    --input: 214 16% 88%;
+    --ring: var(--primary);
 
     --radius: 0.5rem;
 
-    --sidebar-background: 220 30% 12%;
+    --sidebar-background: 215 20% 13%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 172 66% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 24% 18%;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: 215 17% 19%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 220 22% 20%;
-    --sidebar-ring: 172 66% 50%;
-    --sidebar-muted: 220 24% 18%;
+    --sidebar-border: 215 16% 22%;
+    --sidebar-ring: var(--primary);
+    --sidebar-muted: 215 17% 19%;
 
     --header-background: 0 0% 100%;
     --header-foreground: 222 47% 11%;
@@ -149,8 +166,8 @@
     /* Custom tokens */
     --gradient-primary: linear-gradient(
       135deg,
-      hsl(172 66% 50%),
-      hsl(172 66% 40%)
+      var(--primary),
+      hsl(215 16% 38%)
     );
     --shadow-card:
       0 4px 6px -1px hsl(0 0% 0% / 0.05), 0 2px 4px -2px hsl(0 0% 0% / 0.05);
@@ -159,42 +176,41 @@
   }
 
   .dark {
-    --background: 222 47% 9%;
+    --background: 164 20% 8%;
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 11%;
+    --card: 164 20% 10%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 11%;
+    --popover: 164 20% 10%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 172 66% 50%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: #ffffff;
 
-    --secondary: 218 32% 16%;
+    --secondary: 162 17% 16%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 218 32% 16%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 162 17% 16%;
+    --muted-foreground: 156 10% 66%;
 
-    --accent: var(--primary);
+    --accent: color-mix(in oklab, var(--primary) 18%, black);
     --accent-foreground: var(--primary-foreground);
 
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 218 32% 16%;
-    --input: 218 32% 16%;
-    --ring: 172 66% 50%;
+    --border: 162 17% 18%;
+    --input: 162 17% 18%;
+    --ring: var(--primary);
 
-    --sidebar-background: 222 47% 8%;
+    --sidebar-background: 215 22% 9%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 172 66% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 17%;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: 215 17% 16%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 172 66% 50%;
+    --sidebar-border: 215 16% 18%;
+    --sidebar-ring: var(--primary);
 
     --header-background: 222 47% 8%;
     --header-foreground: 210 40% 98%;
@@ -213,6 +229,182 @@
 }
 
 @layer components {
+  .admin-shell {
+    background:
+      linear-gradient(180deg, hsl(var(--background)), hsl(210 18% 95%));
+  }
+
+  .dark .admin-shell {
+    background:
+      linear-gradient(180deg, hsl(var(--background)), hsl(215 22% 7%));
+  }
+
+  .admin-page {
+    min-height: 100%;
+  }
+
+  .admin-page > * {
+    animation: fade-in 0.18s ease-out;
+  }
+
+  .admin-page h1 {
+    letter-spacing: 0;
+    color: hsl(var(--foreground));
+    font-weight: 700;
+  }
+
+  .admin-page h2,
+  .admin-page h3 {
+    letter-spacing: 0;
+    color: hsl(var(--foreground));
+  }
+
+  .admin-page section,
+  .admin-page form {
+    min-width: 0;
+  }
+
+  .admin-page .bg-card,
+  .admin-page [class*="bg-card"] {
+    border-color: hsl(var(--border));
+    box-shadow: 0 10px 30px hsl(160 20% 10% / 0.06);
+  }
+
+  .admin-page .rounded-lg {
+    border-radius: 8px;
+  }
+
+  .admin-page .rounded-md {
+    border-radius: 7px;
+  }
+
+  .admin-page table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .admin-page .overflow-x-auto,
+  .admin-page [class*="overflow-hidden"] {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--primary) 35%, transparent) transparent;
+  }
+
+  .sidebar-menu-scroll {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--primary) 35%, transparent) transparent;
+  }
+
+  .admin-page thead tr {
+    background: var(--primary) !important;
+  }
+
+  .admin-page th {
+    height: 44px;
+    color: var(--primary-foreground) !important;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .admin-page td {
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--border));
+  }
+
+  .admin-page tr:hover td {
+    background-color: hsl(var(--muted) / 0.45);
+  }
+
+  .admin-page input,
+  .admin-page textarea,
+  .admin-page button[role="combobox"],
+  .admin-page select {
+    border-color: hsl(var(--border));
+    background-color: hsl(var(--card));
+  }
+
+  .admin-page input:focus-visible,
+  .admin-page textarea:focus-visible,
+  .admin-page button[role="combobox"]:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 14%, transparent);
+  }
+
+  .admin-page label {
+    color: hsl(var(--foreground));
+    font-weight: 600;
+  }
+
+  .admin-page [role="tablist"],
+  .admin-page [data-radix-collection-item] {
+    border-color: hsl(var(--border));
+  }
+
+  .admin-page [role="tab"] {
+    letter-spacing: 0;
+    font-weight: 700;
+  }
+
+  .admin-page button,
+  .admin-page a {
+    letter-spacing: 0;
+  }
+
+  .admin-page .shadow-sm {
+    box-shadow: 0 10px 30px hsl(160 20% 10% / 0.06);
+  }
+
+  /* Soften older hardcoded colorful utilities into the calmer admin palette. */
+  .admin-page [class*="bg-[hsl("],
+  .admin-page [class*="hover:bg-[hsl("],
+  .admin-page [class*="bg-yellow-"],
+  .admin-page [class*="hover:bg-yellow-"],
+  .admin-page [class*="bg-orange-"],
+  .admin-page [class*="hover:bg-orange-"],
+  .admin-page [class*="bg-blue-"],
+  .admin-page [class*="hover:bg-blue-"],
+  .admin-page [class*="bg-green-"],
+  .admin-page [class*="hover:bg-green-"],
+  .admin-page [class*="bg-purple-"],
+  .admin-page [class*="hover:bg-purple-"],
+  .admin-page [class*="bg-pink-"],
+  .admin-page [class*="hover:bg-pink-"] {
+    background-color: color-mix(in oklab, var(--primary) 12%, transparent) !important;
+    color: var(--primary) !important;
+  }
+
+  .admin-page [class*="text-[hsl("],
+  .admin-page [class*="border-[hsl("],
+  .admin-page [class*="text-yellow-"],
+  .admin-page [class*="border-yellow-"],
+  .admin-page [class*="text-orange-"],
+  .admin-page [class*="border-orange-"],
+  .admin-page [class*="text-blue-"],
+  .admin-page [class*="border-blue-"],
+  .admin-page [class*="text-green-"],
+  .admin-page [class*="border-green-"],
+  .admin-page [class*="text-purple-"],
+  .admin-page [class*="border-purple-"],
+  .admin-page [class*="text-pink-"],
+  .admin-page [class*="border-pink-"] {
+    color: var(--primary) !important;
+    border-color: var(--primary) !important;
+  }
+
+  .admin-page .bg-primary,
+  .admin-page .hover\:bg-primary:hover {
+    background-color: var(--primary) !important;
+  }
+
+  .admin-page .text-primary {
+    color: var(--primary) !important;
+  }
+
+  .admin-page .border-primary {
+    border-color: var(--primary) !important;
+  }
+
   .login-card {
     @apply bg-card rounded-lg p-8 w-full max-w-md mx-auto;
     box-shadow: var(--shadow-card);

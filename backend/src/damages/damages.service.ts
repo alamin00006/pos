@@ -7,10 +7,16 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { CreateDamageDto } from './dto';
 import { calculateStock, nextDocumentNo } from '../common/utils/pos-accounting.util';
 
+/**
+ * Coordinates Damages business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class DamagesService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Creates a new Damages record after validating the request payload.
+   */
   async create(dto: CreateDamageDto) {
     const total = dto.items.reduce((sum, item) => sum + item.quantity * (item.unitCost || 0), 0);
 
@@ -73,6 +79,9 @@ export class DamagesService {
     });
   }
 
+  /**
+   * Retrieves filtered Damages records for API consumers.
+   */
   async findAll(query: PaginationDto) {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
     const where: any = { deletedAt: null };
@@ -92,6 +101,9 @@ export class DamagesService {
     return { data, meta: getPaginationMeta(total, page, limit) };
   }
 
+  /**
+   * Retrieves a single Damages record by identifier.
+   */
   async findOne(id: string) {
     const damage = await this.prisma.damage.findFirst({
       where: { id, deletedAt: null },
@@ -101,6 +113,9 @@ export class DamagesService {
     return damage;
   }
 
+  /**
+   * Removes an existing Damages record while preserving business consistency.
+   */
   async remove(id: string) {
     return this.prisma.$transaction(async (tx) => {
       const damage = await tx.damage.findFirst({

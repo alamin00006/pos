@@ -18,12 +18,18 @@ import { UpdateUserDto } from "./dto/update-user.dto";
 import { PaginationDto } from "../common/dto/pagination.dto";
 import { Permissions } from "../common/decorators";
 
+/**
+ * Exposes HTTP endpoints for Users operations.
+ */
 @ApiTags("Users")
 @ApiBearerAuth("access-token")
 @Controller("users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  /**
+   * Get all users.
+   */
   @Get()
   @Permissions("create_user")
   @ApiOperation({ summary: "Get all users" })
@@ -31,6 +37,9 @@ export class UsersController {
     return this.usersService.findAll(query);
   }
 
+  /**
+   * Get user by ID.
+   */
   @Get(":id")
   @Permissions("create_user")
   @ApiOperation({ summary: "Get user by ID" })
@@ -38,6 +47,9 @@ export class UsersController {
     return this.usersService.findOne(id);
   }
 
+  /**
+   * Create new user.
+   */
   @Post()
   @Permissions("add_user", "create_user")
   @ApiOperation({ summary: "Create new user" })
@@ -45,6 +57,9 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
+  /**
+   * Update user.
+   */
   @Patch(":id")
   @Permissions("edit_user")
   @ApiOperation({ summary: "Update user" })
@@ -52,6 +67,9 @@ export class UsersController {
     return this.usersService.update(id, updateUserDto);
   }
 
+  /**
+   * Delete user (soft delete).
+   */
   @Delete(":id")
   @HttpCode(HttpStatus.OK)
   @Permissions("delete_user")
@@ -60,6 +78,9 @@ export class UsersController {
     return this.usersService.remove(id);
   }
 
+  /**
+   * Assign role to user.
+   */
   @Post(":id/assign-role")
   @Permissions("edit_user")
   @ApiOperation({ summary: "Assign role to user" })
@@ -67,6 +88,9 @@ export class UsersController {
     return this.usersService.assignRole(id, roleId);
   }
 
+  /**
+   * Remove role from user.
+   */
   @Delete(":id/remove-role/:roleId")
   @HttpCode(HttpStatus.OK)
   @Permissions("edit_user")

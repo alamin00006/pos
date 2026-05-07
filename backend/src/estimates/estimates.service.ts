@@ -6,10 +6,16 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { nextDocumentNo } from '../common/utils/pos-accounting.util';
 import { CreateEstimateDto } from './dto';
 
+/**
+ * Coordinates Estimates business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class EstimatesService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Creates a new Estimates record after validating the request payload.
+   */
   async create(dto: CreateEstimateDto) {
     const subtotal = dto.items.reduce((sum, item) => sum + item.quantity * item.unitPrice - (item.discount || 0), 0);
     const discountAmount = dto.discountType === 'percentage' && dto.discount
@@ -54,6 +60,9 @@ export class EstimatesService {
     });
   }
 
+  /**
+   * Retrieves filtered Estimates records for API consumers.
+   */
   async findAll(query: PaginationDto & { customerId?: string }) {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', customerId } = query;
     const where: any = { deletedAt: null };
@@ -74,6 +83,9 @@ export class EstimatesService {
     return { data, meta: getPaginationMeta(total, page, limit) };
   }
 
+  /**
+   * Retrieves a single Estimates record by identifier.
+   */
   async findOne(id: string) {
     const estimate = await this.prisma.estimate.findFirst({
       where: { id, deletedAt: null },
@@ -83,6 +95,9 @@ export class EstimatesService {
     return estimate;
   }
 
+  /**
+   * Updates an existing Estimates record with the provided changes.
+   */
   async update(id: string, dto: any) {
     await this.findOne(id);
     return this.prisma.estimate.update({
@@ -92,6 +107,9 @@ export class EstimatesService {
     });
   }
 
+  /**
+   * Removes an existing Estimates record while preserving business consistency.
+   */
   async remove(id: string) {
     await this.findOne(id);
     return this.prisma.estimate.update({ where: { id }, data: { deletedAt: new Date() } });

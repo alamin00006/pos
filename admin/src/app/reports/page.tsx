@@ -1,6 +1,6 @@
 "use client";
 
-import ProtectedRoute from "@/components/auth/ProtectedRoute.tsx";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Reports from "@/pages/Reports";
 
 export default function Page() {

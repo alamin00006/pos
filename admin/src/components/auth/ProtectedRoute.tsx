@@ -16,6 +16,9 @@ export default function ProtectedRoute({
 }: ProtectedRouteProps) {
   const router = useRouter();
   const { accessToken, user } = useAppSelector((state) => state.auth);
+  const isRehydrated = useAppSelector(
+    (state: any) => state._persist?.rehydrated ?? true,
+  );
   const { hasPermission } = usePermission();
 
   const isAuthenticated = !!accessToken && !!user;
@@ -26,6 +29,8 @@ export default function ProtectedRoute({
     requiredPermissions.some((perm) => hasPermission(perm));
 
   useEffect(() => {
+    if (!isRehydrated) return;
+
     if (!isAuthenticated) {
       router.replace("/");
       return;
@@ -34,8 +39,9 @@ export default function ProtectedRoute({
     if (!hasRequiredPermission) {
       router.replace("/unauthorized");
     }
-  }, [isAuthenticated, hasRequiredPermission, router]);
+  }, [isAuthenticated, hasRequiredPermission, isRehydrated, router]);
 
+  if (!isRehydrated) return null;
   if (!isAuthenticated) return null;
   if (!hasRequiredPermission) return null;
 

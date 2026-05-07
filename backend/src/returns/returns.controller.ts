@@ -5,12 +5,18 @@ import { Permissions } from '../common/decorators';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { CreateReturnDto } from './dto';
 
+/**
+ * Exposes HTTP endpoints for Returns operations.
+ */
 @ApiTags('Returns')
 @ApiBearerAuth()
 @Controller('returns')
 export class ReturnsController {
   constructor(private readonly service: ReturnsService) {}
 
+  /**
+   * Create a return.
+   */
   @Post()
   @Permissions('list_return')
   @ApiOperation({ summary: 'Create a return' })
@@ -18,6 +24,9 @@ export class ReturnsController {
     return this.service.create(dto);
   }
 
+  /**
+   * Get all returns.
+   */
   @Get()
   @Permissions('list_return')
   @ApiOperation({ summary: 'Get all returns' })
@@ -25,6 +34,9 @@ export class ReturnsController {
     return this.service.findAll(query);
   }
 
+  /**
+   * Get return by ID.
+   */
   @Get(':id')
   @Permissions('list_return')
   @ApiOperation({ summary: 'Get return by ID' })
@@ -32,6 +44,9 @@ export class ReturnsController {
     return this.service.findOne(id);
   }
 
+  /**
+   * Delete a return.
+   */
   @Delete(':id')
   @Permissions('delete_return')
   @ApiOperation({ summary: 'Delete a return' })

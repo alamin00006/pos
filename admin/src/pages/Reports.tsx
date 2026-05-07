@@ -21,6 +21,14 @@ import {
   BarChart3,
   PieChart
 } from "lucide-react";
+import {
+  useGetCategoryWiseReportQuery,
+  useGetDailyReportQuery,
+  useGetSummaryReportQuery,
+  useGetTopProductsReportQuery,
+} from "@/redux/api/reportsApi";
+
+const money = (value: number) => `Tk ${Number(value || 0).toLocaleString()}`;
 
 const salesData = [
   { date: "2026-01-30", orders: 45, revenue: 78500, profit: 15700 },
@@ -49,32 +57,41 @@ const categoryStats = [
 
 const Reports = () => {
   const [period, setPeriod] = useState("This Week");
+  const { data: summaryRes } = useGetSummaryReportQuery();
+  const { data: dailyRes } = useGetDailyReportQuery({ period });
+  const { data: topProductsRes } = useGetTopProductsReportQuery({ limit: 5 });
+  const { data: categoryRes } = useGetCategoryWiseReportQuery({ period });
+
+  const summary = summaryRes?.data ?? summaryRes ?? {};
+  const dailyRows = dailyRes?.data ?? dailyRes?.rows ?? salesData;
+  const productRows = topProductsRes?.data ?? topProductsRes?.rows ?? topSellingProducts;
+  const categoryRows = categoryRes?.data ?? categoryRes?.rows ?? categoryStats;
 
   const stats = [
     { 
       title: "Total Revenue", 
-      value: "৳5,94,300", 
+      value: money(summary.totalRevenue ?? summary.revenue ?? 594300), 
       change: "+12.5%", 
       trend: "up",
       icon: DollarSign 
     },
     { 
       title: "Total Orders", 
-      value: "342", 
+      value: String(summary.totalOrders ?? summary.orders ?? 342), 
       change: "+8.2%", 
       trend: "up",
       icon: ShoppingCart 
     },
     { 
       title: "Products Sold", 
-      value: "1,847", 
+      value: String(summary.productsSold ?? summary.totalProductsSold ?? 1847), 
       change: "+15.3%", 
       trend: "up",
       icon: Package 
     },
     { 
       title: "Avg. Order Value", 
-      value: "৳1,738", 
+      value: money(summary.avgOrderValue ?? 1738), 
       change: "-2.1%", 
       trend: "down",
       icon: TrendingUp 
@@ -165,16 +182,16 @@ const Reports = () => {
           </CardHeader>
           <CardContent className="p-4">
             <ul className="space-y-4">
-              {categoryStats.map((cat) => (
-                <li key={cat.category}>
+              {categoryRows.map((cat: any) => (
+                <li key={cat.category || cat.name}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium">{cat.category}</span>
-                    <span className="text-sm text-muted-foreground">{cat.percentage}%</span>
+                    <span className="text-sm font-medium">{cat.category || cat.name}</span>
+                    <span className="text-sm text-muted-foreground">{cat.percentage ?? cat.percent ?? 0}%</span>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-primary rounded-full transition-all"
-                      style={{ width: `${cat.percentage}%` }}
+                      style={{ width: `${cat.percentage ?? cat.percent ?? 0}%` }}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">৳{cat.sales.toLocaleString()}</p>
@@ -205,10 +222,10 @@ const Reports = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {salesData.map((day) => (
+                {dailyRows.map((day: any) => (
                   <TableRow key={day.date}>
                     <TableCell className="font-medium">{day.date}</TableCell>
-                    <TableCell>{day.orders}</TableCell>
+                    <TableCell>{day.orders ?? day.totalOrders ?? 0}</TableCell>
                     <TableCell>৳{day.revenue.toLocaleString()}</TableCell>
                     <TableCell className="text-primary">৳{day.profit.toLocaleString()}</TableCell>
                   </TableRow>
@@ -237,15 +254,15 @@ const Reports = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {topSellingProducts.map((product, index) => (
-                  <TableRow key={product.name}>
+                {productRows.map((product: any, index: number) => (
+                  <TableRow key={product.id || product.name}>
                     <TableCell>
                       <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center">
                         {index + 1}
                       </span>
                     </TableCell>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>{product.sold}</TableCell>
+                    <TableCell className="font-medium">{product.name || product.productName}</TableCell>
+                    <TableCell>{product.sold ?? product.quantity ?? product.totalSold ?? 0}</TableCell>
                     <TableCell className="text-primary font-medium">৳{product.revenue.toLocaleString()}</TableCell>
                   </TableRow>
                 ))}

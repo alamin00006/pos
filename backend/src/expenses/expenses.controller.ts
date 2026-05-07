@@ -24,12 +24,18 @@ class ExpenseQueryDto extends PaginationDto {
   endDate?: string;
 }
 
+/**
+ * Exposes HTTP endpoints for Expenses operations.
+ */
 @ApiTags('Expenses')
 @ApiBearerAuth()
 @Controller('expenses')
 export class ExpensesController {
   constructor(private readonly service: ExpensesService) {}
 
+  /**
+   * Create expense.
+   */
   @Post()
   @Permissions('add_expense')
   @ApiOperation({ summary: 'Create expense' })
@@ -37,6 +43,9 @@ export class ExpensesController {
     return this.service.create(dto);
   }
 
+  /**
+   * Get all expenses.
+   */
   @Get()
   @Permissions('create_expense')
   @ApiOperation({ summary: 'Get all expenses' })
@@ -44,6 +53,9 @@ export class ExpensesController {
     return this.service.findAll(query);
   }
 
+  /**
+   * Get expense by ID.
+   */
   @Get(':id')
   @Permissions('create_expense')
   @ApiOperation({ summary: 'Get expense by ID' })
@@ -51,6 +63,9 @@ export class ExpensesController {
     return this.service.findOne(id);
   }
 
+  /**
+   * Update expense.
+   */
   @Patch(':id')
   @Permissions('edit_expense')
   @ApiOperation({ summary: 'Update expense' })
@@ -58,6 +73,9 @@ export class ExpensesController {
     return this.service.update(id, dto);
   }
 
+  /**
+   * Delete expense.
+   */
   @Delete(':id')
   @Permissions('delete_expense')
   @ApiOperation({ summary: 'Delete expense' })

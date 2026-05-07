@@ -12,10 +12,7 @@ import {
 export const productsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     /** GET /products */
-    getProducts: builder.query<
-      ApiResponse<PaginatedResponse<Product>>,
-      ProductListQuery
-    >({
+    getProducts: builder.query<any, ProductListQuery>({
       query: (params) => ({
         url: "/products",
         method: "GET",

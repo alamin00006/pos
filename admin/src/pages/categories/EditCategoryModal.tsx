@@ -61,8 +61,10 @@ const EditCategoryModal = ({ open, onOpenChange, categoryId }: Props) => {
     try {
       await updateCategory({
         id: categoryId,
-        name: form.name.trim(),
-        description: form.description.trim() || undefined,
+        data: {
+          name: form.name.trim(),
+          description: form.description.trim() || undefined,
+        },
       }).unwrap();
 
       toast.success("Category updated");

@@ -5,10 +5,16 @@ import { getPaginationMeta } from '../common/utils/pagination.util';
 import { BankTransactionType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
+/**
+ * Coordinates Bank Accounts business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class BankAccountsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Creates a new Bank Accounts record after validating the request payload.
+   */
   async create(dto: any) {
     return this.prisma.bankAccount.create({
       data: {
@@ -22,6 +28,9 @@ export class BankAccountsService {
     });
   }
 
+  /**
+   * Retrieves filtered Bank Accounts records for API consumers.
+   */
   async findAll(query: PaginationDto) {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
     const where: any = { deletedAt: null };
@@ -48,6 +57,9 @@ export class BankAccountsService {
     return { data, meta: getPaginationMeta(total, page, limit) };
   }
 
+  /**
+   * Retrieves a single Bank Accounts record by identifier.
+   */
   async findOne(id: string) {
     const account = await this.prisma.bankAccount.findFirst({
       where: { id, deletedAt: null },
@@ -58,6 +70,9 @@ export class BankAccountsService {
     return account;
   }
 
+  /**
+   * Updates an existing Bank Accounts record with the provided changes.
+   */
   async update(id: string, dto: any) {
     await this.findOne(id);
     const data = { ...dto };
@@ -75,6 +90,9 @@ export class BankAccountsService {
     });
   }
 
+  /**
+   * Handles the deposit workflow for Bank Accounts records.
+   */
   async deposit(id: string, dto: any) {
     const account = await this.findOne(id);
     const newBalance = Number(account.currentBalance) + dto.amount;
@@ -97,6 +115,9 @@ export class BankAccountsService {
     });
   }
 
+  /**
+   * Handles the withdraw workflow for Bank Accounts records.
+   */
   async withdraw(id: string, dto: any) {
     const account = await this.findOne(id);
     if (Number(account.currentBalance) < dto.amount) {
@@ -122,6 +143,9 @@ export class BankAccountsService {
     });
   }
 
+  /**
+   * Handles the transfer workflow for Bank Accounts records.
+   */
   async transfer(fromId: string, dto: any) {
     const fromAccount = await this.findOne(fromId);
     const toAccount = await this.findOne(dto.toAccountId);
@@ -168,6 +192,9 @@ export class BankAccountsService {
     });
   }
 
+  /**
+   * Removes an existing Bank Accounts record while preserving business consistency.
+   */
   async remove(id: string) {
     await this.findOne(id);
     return this.prisma.bankAccount.update({

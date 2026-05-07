@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { use, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
-import { useLocation, useNavigate } from "@/lib/router";
 
 import {
   useGetSupplierByIdQuery,
@@ -17,9 +16,9 @@ const money = (n: number) => `৳ ${Number(n || 0).toLocaleString()}`;
 export default function SupplierReportPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const supplierId = params.id;
+  const { id: supplierId } = use(params);
 
   const { data: supplierRes, isLoading: supplierLoading } =
     useGetSupplierByIdQuery(supplierId);

@@ -32,6 +32,12 @@ instance.interceptors.request.use(
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
+
+    const branchId = getFromLocalStorage("selectedBranchId");
+    if (branchId) {
+      config.headers["x-branch-id"] = branchId;
+    }
+
     return config;
   },
   (error) => Promise.reject(error),
@@ -47,7 +53,7 @@ instance.interceptors.response.use(
       removeFromLocalStorage(authKey);
 
       if (typeof window !== "undefined") {
-        window.location.href = "/login";
+        window.location.href = "/";
       }
     }
 

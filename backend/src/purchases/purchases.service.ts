@@ -20,10 +20,16 @@ import {
   recordBankTransaction,
 } from '../common/utils/pos-accounting.util';
 
+/**
+ * Coordinates Purchases business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class PurchasesService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Creates a new Purchases record after validating the request payload.
+   */
   async create(dto: CreatePurchaseDto, userId?: string, branchId?: string) {
     const supplier = await this.prisma.supplier.findUnique({
       where: { id: dto.supplierId, deletedAt: null, ...(branchId ? { branchId } : {}) } as any,
@@ -176,6 +182,9 @@ export class PurchasesService {
     });
   }
 
+  /**
+   * Retrieves filtered Purchases records for API consumers.
+   */
   async findAll(query: PurchaseQueryDto, branchId?: string) {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', supplierId, status, paymentStatus, startDate, endDate } = query;
 
@@ -216,6 +225,9 @@ export class PurchasesService {
     return { data, meta: getPaginationMeta(total, page, limit) };
   }
 
+  /**
+   * Retrieves a single Purchases record by identifier.
+   */
   async findOne(id: string, branchId?: string) {
     const purchase = await this.prisma.purchase.findFirst({
       where: { id, deletedAt: null, ...(branchId ? { branchId } : {}) },
@@ -234,6 +246,9 @@ export class PurchasesService {
     return purchase;
   }
 
+  /**
+   * Updates an existing Purchases record with the provided changes.
+   */
   async update(id: string, dto: UpdatePurchaseDto) {
     const purchase = await this.findOne(id);
 
@@ -272,6 +287,9 @@ export class PurchasesService {
     });
   }
 
+  /**
+   * Creates a new Purchases record after validating the request payload.
+   */
   async addPayment(id: string, dto: AddPurchasePaymentDto, branchId?: string) {
     const purchase = await this.findOne(id, branchId);
 
@@ -365,6 +383,9 @@ export class PurchasesService {
     });
   }
 
+  /**
+   * Handles the get receipt workflow for Purchases records.
+   */
   async getReceipt(id: string) {
     const purchase = await this.findOne(id);
 
@@ -375,6 +396,9 @@ export class PurchasesService {
     };
   }
 
+  /**
+   * Removes an existing Purchases record while preserving business consistency.
+   */
   async remove(id: string) {
     return this.prisma.$transaction(async (tx) => {
       const purchase = await tx.purchase.findFirst({
@@ -438,6 +462,9 @@ export class PurchasesService {
     });
   }
 
+  /**
+   * Handles the get supplier purchases workflow for Purchases records.
+   */
   async getSupplierPurchases(supplierId: string, query: PurchaseQueryDto) {
     return this.findAll({ ...query, supplierId });
   }

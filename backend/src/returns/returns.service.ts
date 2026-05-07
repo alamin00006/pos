@@ -7,10 +7,16 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { CreateReturnDto } from './dto';
 import { nextDocumentNo } from '../common/utils/pos-accounting.util';
 
+/**
+ * Coordinates Returns business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class ReturnsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Creates a new Returns record after validating the request payload.
+   */
   async create(dto: CreateReturnDto) {
     return this.prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findFirst({
@@ -124,8 +130,21 @@ export class ReturnsService {
     });
   }
 
-  async findAll(query: PaginationDto) {
-    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+  /**
+   * Retrieves filtered Returns records for API consumers.
+   */
+  async findAll(query: PaginationDto & Record<string, any>) {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      startDate,
+      endDate,
+      saleId,
+      customerId,
+    } = query;
     const where: any = { deletedAt: null };
     if (search) {
       where.OR = [
@@ -133,11 +152,29 @@ export class ReturnsService {
         { sale: { invoiceNo: { contains: search, mode: 'insensitive' } } },
       ];
     }
+    if (saleId) {
+      where.OR = [
+        ...(where.OR || []),
+        { saleId },
+        { sale: { invoiceNo: { contains: saleId, mode: 'insensitive' } } },
+      ];
+    }
+    if (customerId) {
+      where.sale = { ...(where.sale || {}), customerId };
+    }
+    if (startDate || endDate) {
+      where.returnDate = {};
+      if (startDate) where.returnDate.gte = new Date(startDate);
+      if (endDate) where.returnDate.lte = new Date(endDate);
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.return.findMany({
         where,
-        include: { sale: true, returnItems: { include: { product: true } } },
+        include: {
+          sale: { include: { customer: true } },
+          returnItems: { include: { product: true } },
+        },
         orderBy: { [sortBy]: sortOrder },
         skip: (page - 1) * limit,
         take: limit,
@@ -148,6 +185,9 @@ export class ReturnsService {
     return { data, meta: getPaginationMeta(total, page, limit) };
   }
 
+  /**
+   * Retrieves a single Returns record by identifier.
+   */
   async findOne(id: string) {
     const returnRecord = await this.prisma.return.findFirst({
       where: { id, deletedAt: null },
@@ -157,6 +197,9 @@ export class ReturnsService {
     return returnRecord;
   }
 
+  /**
+   * Removes an existing Returns record while preserving business consistency.
+   */
   async remove(id: string) {
     return this.prisma.$transaction(async (tx) => {
       const returnRecord = await tx.return.findFirst({

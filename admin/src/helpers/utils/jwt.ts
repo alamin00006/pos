@@ -1,6 +1,17 @@
-import { jwtDecode, JwtPayload } from "jwt-decode";
+export type JwtPayload = {
+  exp?: number;
+  iat?: number;
+  sub?: string;
+  [key: string]: unknown;
+};
 
-// You can extend JwtPayload if your token has additional fields
 export const decodedToken = (token: string): JwtPayload => {
-  return jwtDecode<JwtPayload>(token);
+  const payload = token.split(".")[1];
+  if (!payload) return {};
+  try {
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(normalized));
+  } catch {
+    return {};
+  }
 };

@@ -4,10 +4,16 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 import { buildOrderByQuery, buildPaginationQuery, buildSearchQuery, paginate } from '../common/utils/pagination.util';
 import { AssignUserBranchDto, CreateBranchDto, UpdateBranchDto } from './dto';
 
+/**
+ * Coordinates Branches business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class BranchesService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Retrieves filtered Branches records for API consumers.
+   */
   async findAll(query: PaginationDto) {
     const { page, limit, search, sortBy, sortOrder } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -27,6 +33,9 @@ export class BranchesService {
     return paginate(branches, total, page!, limit!);
   }
 
+  /**
+   * Retrieves a single Branches record by identifier.
+   */
   async findOne(id: string) {
     const branch = await (this.prisma as any).branch.findFirst({
       where: { id, deletedAt: null },
@@ -36,12 +45,18 @@ export class BranchesService {
     return branch;
   }
 
+  /**
+   * Creates a new Branches record after validating the request payload.
+   */
   async create(dto: CreateBranchDto) {
     const existing = await (this.prisma as any).branch.findUnique({ where: { code: dto.code } });
     if (existing) throw new ConflictException('Branch code already exists');
     return (this.prisma as any).branch.create({ data: { ...dto, isActive: dto.isActive ?? true } });
   }
 
+  /**
+   * Updates an existing Branches record with the provided changes.
+   */
   async update(id: string, dto: UpdateBranchDto) {
     await this.findOne(id);
     if (dto.code) {
@@ -51,6 +66,9 @@ export class BranchesService {
     return (this.prisma as any).branch.update({ where: { id }, data: dto });
   }
 
+  /**
+   * Removes an existing Branches record while preserving business consistency.
+   */
   async remove(id: string) {
     const branch = await this.findOne(id);
     if (branch.code === 'MAIN') throw new BadRequestException('Default branch cannot be deleted');
@@ -58,6 +76,9 @@ export class BranchesService {
     return { message: 'Branch deleted successfully' };
   }
 
+  /**
+   * Handles the assign user workflow for Branches records.
+   */
   async assignUser(branchId: string, dto: AssignUserBranchDto) {
     await this.findOne(branchId);
     const user = await this.prisma.user.findFirst({ where: { id: dto.userId, deletedAt: null } });
@@ -75,6 +96,9 @@ export class BranchesService {
     });
   }
 
+  /**
+   * Handles the remove user workflow for Branches records.
+   */
   async removeUser(branchId: string, userId: string) {
     await (this.prisma as any).userBranch.deleteMany({ where: { branchId, userId } });
     return { message: 'User removed from branch successfully' };

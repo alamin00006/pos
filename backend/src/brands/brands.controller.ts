@@ -17,12 +17,18 @@ import { UpdateBrandDto } from './dto/update-brand.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { Permissions } from '../common/decorators';
 
+/**
+ * Exposes HTTP endpoints for Brands operations.
+ */
 @ApiTags('Brands')
 @ApiBearerAuth('access-token')
 @Controller('brands')
 export class BrandsController {
   constructor(private readonly brandsService: BrandsService) {}
 
+  /**
+   * Get all brands.
+   */
   @Get()
   @Permissions('brands')
   @ApiOperation({ summary: 'Get all brands' })
@@ -30,6 +36,9 @@ export class BrandsController {
     return this.brandsService.findAll(query);
   }
 
+  /**
+   * Get brand by ID.
+   */
   @Get(':id')
   @Permissions('brands')
   @ApiOperation({ summary: 'Get brand by ID' })
@@ -37,6 +46,9 @@ export class BrandsController {
     return this.brandsService.findOne(id);
   }
 
+  /**
+   * Create new brand.
+   */
   @Post()
   @Permissions('add_brand')
   @ApiOperation({ summary: 'Create new brand' })
@@ -44,6 +56,9 @@ export class BrandsController {
     return this.brandsService.create(createBrandDto);
   }
 
+  /**
+   * Update brand.
+   */
   @Put(':id')
   @Permissions('edit_brand')
   @ApiOperation({ summary: 'Update brand' })
@@ -51,6 +66,9 @@ export class BrandsController {
     return this.brandsService.update(id, updateBrandDto);
   }
 
+  /**
+   * Delete brand (soft delete).
+   */
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @Permissions('delete_brand')

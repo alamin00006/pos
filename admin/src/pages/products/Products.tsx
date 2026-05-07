@@ -45,6 +45,8 @@ import {
   Trash2,
   Printer,
   ImageIcon,
+  Package,
+  Plus,
 } from "lucide-react";
 
 //  RTK hooks
@@ -106,7 +108,7 @@ const Products = () => {
   const [deleteProduct, { isLoading: deleting }] = useDeleteProductMutation();
 
   const items: Product[] = productsRes?.data ?? [];
-  const meta = productsRes?.data?.meta;
+  const meta = productsRes?.meta ?? productsRes?.data?.meta;
 
   const totalItems = meta?.total ?? items.length; // fallback
   const totalPages =
@@ -154,9 +156,6 @@ const Products = () => {
     setCurrentPage(1);
   };
 
-  const handleView = (id: number | string) => {
-    navigate(`/products/${id}`);
-  };
   const handleDelete = async (id: string) => {
     try {
       await deleteProduct(id).unwrap();
@@ -170,6 +169,25 @@ const Products = () => {
 
   return (
     <DashboardLayout title="Products">
+      <div className="space-y-6">
+        <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-primary">Inventory</p>
+              <h1 className="mt-1 text-3xl font-bold text-foreground">
+                Product catalog
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                Manage products, pricing, categories, brands, and stock visibility.
+              </p>
+            </div>
+            <Button onClick={() => navigate("/products/add")} className="w-fit gap-2">
+              <Plus className="h-4 w-4" />
+              Add Product
+            </Button>
+          </div>
+        </section>
+
       <Tabs defaultValue="products" className="w-full">
         <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start h-auto p-0 mb-6">
           <TabsTrigger
@@ -189,8 +207,19 @@ const Products = () => {
 
         <TabsContent value="products" className="mt-0 space-y-6">
           {/* Filters */}
-          <Card>
+          <Card className="border-border shadow-sm">
             <CardContent className="p-6">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="rounded-md bg-primary/10 p-2">
+                  <Filter className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold">Filter products</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Search product records before printing or editing.
+                  </p>
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <Input
                   placeholder="Product Code"
@@ -277,17 +306,25 @@ const Products = () => {
           </Card>
 
           {/* Table */}
-          <Card>
+          <Card className="border-border shadow-sm">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">
-                  Products{" "}
+              <div className="flex flex-col gap-4 mb-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-md bg-primary/10 p-2">
+                    <Package className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Products</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Showing {totalItems} catalog records
+                    </p>
+                  </div>
                   {isFetching ? (
                     <span className="text-sm text-muted-foreground">
-                      (loading…)
+                      Updating...
                     </span>
                   ) : null}
-                </h3>
+                </div>
 
                 <Button
                   variant="outline"
@@ -366,8 +403,7 @@ const Products = () => {
                           </TableCell>
 
                           <TableCell>
-                            <div className="w-8 h-8 bg-muted rounded flex items-center justify-center overflow-hidden">
-                              {/* product.imageUrl থাকলে Image দেখাতে পারো */}
+                            <div className="w-10 h-10 bg-primary/10 rounded-md flex items-center justify-center overflow-hidden">
                               <ImageIcon className="w-4 h-4 text-muted-foreground" />
                             </div>
                           </TableCell>
@@ -516,6 +552,7 @@ const Products = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </DashboardLayout>
   );
 };

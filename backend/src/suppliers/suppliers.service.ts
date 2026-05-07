@@ -1,16 +1,23 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { SupplierPaymentDto } from './dto/supplier-payment.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { paginate, buildPaginationQuery, buildOrderByQuery, buildSearchQuery } from '../common/utils/pagination.util';
-import { SupplierLedgerType, CashBookType, CashBookSource } from '@prisma/client';
+import { BankTransactionType, SupplierLedgerType, CashBookType, CashBookSource, PaymentMethod } from '@prisma/client';
+import { addCashBookEntry, recordBankTransaction } from '../common/utils/pos-accounting.util';
 
+/**
+ * Coordinates Suppliers business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class SuppliersService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Retrieves filtered Suppliers records for API consumers.
+   */
   async findAll(query: PaginationDto, branchId?: string) {
     const { page, limit, search, sortBy, sortOrder } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -44,6 +51,9 @@ export class SuppliersService {
     return paginate(suppliersWithDue, total, page!, limit!);
   }
 
+  /**
+   * Builds the requested Suppliers report from current business data.
+   */
   async getDueReport(query: PaginationDto, branchId?: string) {
     const { page, limit } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -66,6 +76,9 @@ export class SuppliersService {
     return paginate(paginatedSuppliers, suppliersWithPositiveDue.length, page!, limit!);
   }
 
+  /**
+   * Retrieves a single Suppliers record by identifier.
+   */
   async findOne(id: string, branchId?: string) {
     const supplier = await this.prisma.supplier.findFirst({
       where: { id, ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}) },
@@ -79,6 +92,9 @@ export class SuppliersService {
     return { ...supplier, due };
   }
 
+  /**
+   * Handles the get ledger workflow for Suppliers records.
+   */
   async getLedger(id: string, query: PaginationDto) {
     const { page, limit } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -98,6 +114,9 @@ export class SuppliersService {
     return paginate(ledger, total, page!, limit!);
   }
 
+  /**
+   * Creates a new Suppliers record after validating the request payload.
+   */
   async create(createSupplierDto: CreateSupplierDto, userId?: string, branchId?: string) {
     const supplier = await this.prisma.supplier.create({
       data: {
@@ -123,6 +142,9 @@ export class SuppliersService {
     return supplier;
   }
 
+  /**
+   * Updates an existing Suppliers record with the provided changes.
+   */
   async update(id: string, updateSupplierDto: UpdateSupplierDto) {
     await this.findOne(id);
     return this.prisma.supplier.update({
@@ -131,6 +153,9 @@ export class SuppliersService {
     });
   }
 
+  /**
+   * Removes an existing Suppliers record while preserving business consistency.
+   */
   async remove(id: string) {
     await this.findOne(id);
     await this.prisma.supplier.update({
@@ -140,55 +165,75 @@ export class SuppliersService {
     return { message: 'Supplier deleted successfully' };
   }
 
-  async makePayment(supplierId: string, paymentDto: SupplierPaymentDto) {
-    const supplier = await this.findOne(supplierId);
+  /**
+   * Processes payment changes and keeps related ledgers in sync.
+   */
+  async makePayment(supplierId: string, paymentDto: SupplierPaymentDto, branchId?: string) {
+    const supplier = await this.findOne(supplierId, branchId);
     const currentDue = await this.calculateDue(supplierId);
+    const paymentMethod = paymentDto.paymentMethod || PaymentMethod.CASH;
 
-    // Create payment record
-    await this.prisma.supplierPayment.create({
-      data: {
-        supplierId,
-        amount: paymentDto.amount,
-        paymentMethod: paymentDto.paymentMethod,
-        note: paymentDto.note,
-        paymentDate: paymentDto.paymentDate || new Date(),
-      },
-    });
-
-    // Create ledger entry
-    const newBalance = currentDue - Number(paymentDto.amount);
-    await this.prisma.supplierLedger.create({
-      data: {
-        supplierId,
-        type: SupplierLedgerType.PAYMENT,
-        amount: paymentDto.amount,
-        balance: newBalance,
-        note: paymentDto.note || 'Payment made',
-      },
-    });
-
-    // Create cash book entry if cash payment
-    if (paymentDto.paymentMethod === 'CASH') {
-      const lastCashEntry = await this.prisma.cashBook.findFirst({
-        orderBy: { createdAt: 'desc' },
-      });
-
-      await this.prisma.cashBook.create({
-        data: {
-          type: CashBookType.OUT,
-          source: CashBookSource.PAYMENT_MADE,
-          referenceId: supplierId,
-          amount: paymentDto.amount,
-          balance: (Number(lastCashEntry?.balance) || 0) - Number(paymentDto.amount),
-          description: `Payment to supplier: ${supplier.name}`,
-        },
-      });
+    if (paymentDto.amount > currentDue) {
+      throw new BadRequestException(`Payment amount cannot exceed supplier due amount of ${currentDue}`);
     }
 
-    return { message: 'Payment recorded successfully', newDue: newBalance };
+    if (paymentMethod !== PaymentMethod.CASH && !paymentDto.bankAccountId) {
+      throw new BadRequestException('Bank account is required for non-cash supplier payments');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Create payment record
+      await tx.supplierPayment.create({
+        data: {
+          supplierId,
+          amount: paymentDto.amount,
+          paymentMethod,
+          note: paymentDto.note,
+          paymentDate: paymentDto.paymentDate || new Date(),
+        },
+      });
+
+      // Create ledger entry
+      const newBalance = currentDue - Number(paymentDto.amount);
+      await tx.supplierLedger.create({
+        data: {
+          supplierId,
+          type: SupplierLedgerType.PAYMENT,
+          amount: paymentDto.amount,
+          balance: newBalance,
+          note: paymentDto.note || 'Payment made',
+        },
+      });
+
+      if (paymentMethod === PaymentMethod.CASH) {
+        await addCashBookEntry(
+          tx,
+          CashBookType.OUT,
+          CashBookSource.PAYMENT_MADE,
+          supplierId,
+          paymentDto.amount,
+          `Payment to supplier: ${supplier.name}`,
+          branchId,
+        );
+      } else if (paymentDto.bankAccountId) {
+        await recordBankTransaction(
+          tx,
+          paymentDto.bankAccountId,
+          paymentDto.amount,
+          BankTransactionType.WITHDRAW,
+          supplierId,
+          `Payment to supplier: ${supplier.name}`,
+        );
+      }
+
+      return { message: 'Payment recorded successfully', newDue: newBalance };
+    });
   }
 
   // Used by purchase service
+  /**
+   * Creates a new Suppliers record after validating the request payload.
+   */
   async addPurchaseDue(supplierId: string, amount: number, referenceId: string) {
     const currentDue = await this.calculateDue(supplierId);
     const newBalance = currentDue + amount;
@@ -205,6 +250,9 @@ export class SuppliersService {
     });
   }
 
+  /**
+   * Handles the calculate due workflow for Suppliers records.
+   */
   private async calculateDue(supplierId: string): Promise<number> {
     const ledger = await this.prisma.supplierLedger.findMany({
       where: { supplierId },

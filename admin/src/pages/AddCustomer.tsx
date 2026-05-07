@@ -17,10 +17,12 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, User, MapPin, CreditCard } from "lucide-react";
+import { useCreateCustomerMutation } from "@/redux/api/customerApi";
 
 const AddCustomer = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [createCustomer, { isLoading }] = useCreateCustomerMutation();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -35,13 +37,31 @@ const AddCustomer = () => {
     notes: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Customer Added",
-      description: `${formData.name} has been added successfully.`,
-    });
-    navigate("/customers");
+    try {
+      await createCustomer({
+        name: formData.name,
+        phone: formData.phone || undefined,
+        email: formData.email || undefined,
+        address: [formData.address, formData.area, formData.city]
+          .filter(Boolean)
+          .join(", ") || undefined,
+        company: formData.type || undefined,
+        openingBalance: Number(formData.openingBalance || 0),
+      }).unwrap();
+      toast({
+        title: "Customer Added",
+        description: `${formData.name} has been added successfully.`,
+      });
+      navigate("/customers");
+    } catch (error: any) {
+      toast({
+        title: "Save failed",
+        description: error?.data?.message || "Could not save customer",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -50,20 +70,34 @@ const AddCustomer = () => {
 
   return (
     <DashboardLayout title="Add Customer">
-      <div className="max-w-4xl">
-        <Button
-          variant="ghost"
-          className="mb-6"
-          onClick={() => navigate("/customers")}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Customers
-        </Button>
+      <div className="max-w-5xl space-y-6">
+        <section className="rounded-lg border border-primary/15 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium uppercase tracking-wide text-primary">
+                Customer setup
+              </p>
+              <h1 className="mt-2 text-2xl font-semibold text-gray-950">
+                Add Customer
+              </h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Create a customer profile that can be used in sales, ledger, and payments.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/customers")}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Customers
+            </Button>
+          </div>
+        </section>
 
         <form onSubmit={handleSubmit}>
           <div className="grid gap-6">
             {/* Basic Information */}
-            <Card>
+            <Card className="border-primary/10 shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="w-5 h-5" />
@@ -125,7 +159,7 @@ const AddCustomer = () => {
             </Card>
 
             {/* Address */}
-            <Card>
+            <Card className="border-primary/10 shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MapPin className="w-5 h-5" />
@@ -178,7 +212,7 @@ const AddCustomer = () => {
             </Card>
 
             {/* Credit & Balance */}
-            <Card>
+            <Card className="border-primary/10 shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="w-5 h-5" />
@@ -231,9 +265,9 @@ const AddCustomer = () => {
               >
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90">
                 <Save className="w-4 h-4 mr-2" />
-                Save Customer
+                {isLoading ? "Saving..." : "Save Customer"}
               </Button>
             </div>
           </div>

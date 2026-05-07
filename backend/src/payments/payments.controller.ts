@@ -4,12 +4,18 @@ import { PaymentsService } from './payments.service';
 import { Permissions } from '../common/decorators';
 import { CreatePaymentDto, PaymentQueryDto } from './dto';
 
+/**
+ * Exposes HTTP endpoints for Payments operations.
+ */
 @ApiTags('Payments')
 @ApiBearerAuth()
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly service: PaymentsService) {}
 
+  /**
+   * Create payment.
+   */
   @Post()
   @Permissions('add_payment')
   @ApiOperation({ summary: 'Create payment' })
@@ -17,6 +23,9 @@ export class PaymentsController {
     return this.service.create(dto);
   }
 
+  /**
+   * Get all payments.
+   */
   @Get()
   @Permissions('view_payment')
   @ApiOperation({ summary: 'Get all payments' })
@@ -24,6 +33,9 @@ export class PaymentsController {
     return this.service.findAll(query);
   }
 
+  /**
+   * Get payment by ID.
+   */
   @Get(':id')
   @Permissions('view_payment')
   @ApiOperation({ summary: 'Get payment by ID' })
@@ -31,6 +43,9 @@ export class PaymentsController {
     return this.service.findOne(id);
   }
 
+  /**
+   * Delete payment.
+   */
   @Delete(':id')
   @Permissions('delete_payment')
   @ApiOperation({ summary: 'Delete payment' })

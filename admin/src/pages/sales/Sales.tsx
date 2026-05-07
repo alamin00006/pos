@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   Filter,
   RotateCcw,
@@ -47,6 +48,7 @@ import {
   Plus,
   Download,
   Receipt,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -55,7 +57,6 @@ import {
   useGetSalesQuery,
   useGetTodaySalesQuery,
   useGetSalesReportQuery,
-  useGetSaleByIdQuery,
   useGetSaleReceiptQuery,
   useDeleteSaleMutation,
   useAddSalePaymentMutation,
@@ -81,6 +82,7 @@ interface Sale {
   customerId?: string;
   customerName: string;
   items: SaleItem[];
+  saleItems?: SaleItem[];
   createdAt: string;
   discount: number;
   discountType?: "PERCENTAGE" | "FIXED";
@@ -118,6 +120,146 @@ interface RefundData {
   note?: string;
 }
 
+const toNumber = (value: unknown) => {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+};
+
+const formatMoney = (value: unknown) => `৳${toNumber(value).toLocaleString()}`;
+
+const normalizeSaleItem = (item: any): SaleItem => ({
+  productId: item.productId ?? item.product?.id ?? "",
+  productName: item.productName ?? item.product?.name ?? "Unknown product",
+  productCode: item.productCode ?? item.product?.productCode ?? "",
+  quantity: toNumber(item.quantity),
+  unitPrice: toNumber(item.unitPrice),
+  discount: toNumber(item.discount),
+  total: toNumber(item.total),
+});
+
+const normalizeSale = (sale: any): Sale => {
+  const saleItems = (sale.saleItems ?? sale.items ?? []).map(normalizeSaleItem);
+  const paid = toNumber(sale.paid ?? sale.paidAmount);
+  const due = toNumber(sale.due ?? sale.dueAmount);
+  const total = toNumber(sale.total);
+
+  return {
+    ...sale,
+    customerName: sale.customerName ?? sale.customer?.name ?? "Walk-in Customer",
+    items: saleItems,
+    saleItems,
+    createdAt: sale.createdAt ?? sale.saleDate ?? new Date().toISOString(),
+    discount: toNumber(sale.discount),
+    subtotal: toNumber(sale.subtotal),
+    tax: toNumber(sale.tax),
+    total,
+    paid,
+    due,
+    returned: toNumber(sale.returned),
+    purchaseCost: toNumber(sale.purchaseCost),
+    profit: toNumber(sale.profit),
+    status:
+      sale.status === "REFUNDED"
+        ? "REFUNDED"
+        : sale.paymentStatus ?? (due <= 0 ? "PAID" : paid > 0 ? "PARTIAL" : "UNPAID"),
+    payments: sale.payments ?? [],
+  };
+};
+
+const openReceiptPrintWindow = (receipt: any) => {
+  const sale = normalizeSale(receipt?.sale ?? receipt?.data?.sale ?? {});
+  const company = receipt?.company ?? receipt?.data?.company ?? {};
+  const shopName = company.company_name || company.shop_name || "POS Software";
+  const rows = sale.items
+    .map(
+      (item) => `
+        <tr>
+          <td>${escapeHtml(item.productName)}</td>
+          <td class="right">${item.quantity}</td>
+          <td class="right">${formatMoney(item.unitPrice)}</td>
+          <td class="right">${formatMoney(item.total)}</td>
+        </tr>
+      `,
+    )
+    .join("");
+
+  const html = `
+    <!doctype html>
+    <html>
+      <head>
+        <title>Receipt ${escapeHtml(sale.invoiceNo || "")}</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { margin: 0; font-family: Arial, sans-serif; color: #111827; background: #f3f4f6; }
+          .receipt { width: 320px; margin: 24px auto; background: #fff; padding: 18px; border: 1px solid #e5e7eb; }
+          .center { text-align: center; }
+          .muted { color: #6b7280; font-size: 12px; }
+          h1 { margin: 0 0 4px; font-size: 20px; }
+          .meta { margin: 14px 0; border-top: 1px dashed #d1d5db; border-bottom: 1px dashed #d1d5db; padding: 10px 0; font-size: 12px; }
+          .line { display: flex; justify-content: space-between; gap: 10px; margin: 4px 0; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          th { border-bottom: 1px solid #111827; padding: 6px 0; text-align: left; }
+          td { border-bottom: 1px dashed #e5e7eb; padding: 6px 0; vertical-align: top; }
+          .right { text-align: right; }
+          .totals { margin-top: 10px; font-size: 13px; }
+          .total { font-size: 16px; font-weight: 700; }
+          .thanks { margin-top: 16px; font-size: 12px; }
+          @media print {
+            body { background: #fff; }
+            .receipt { width: 80mm; margin: 0; border: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <main class="receipt">
+          <header class="center">
+            <h1>${escapeHtml(shopName)}</h1>
+            <div class="muted">${escapeHtml(company.company_address || "")}</div>
+            <div class="muted">${escapeHtml(company.company_phone || "")}</div>
+          </header>
+          <section class="meta">
+            <div class="line"><span>Invoice</span><strong>${escapeHtml(sale.invoiceNo || "-")}</strong></div>
+            <div class="line"><span>Date</span><span>${new Date(sale.createdAt).toLocaleString()}</span></div>
+            <div class="line"><span>Customer</span><span>${escapeHtml(sale.customerName)}</span></div>
+          </section>
+          <table>
+            <thead>
+              <tr><th>Item</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Total</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <section class="totals">
+            <div class="line"><span>Subtotal</span><span>${formatMoney(sale.subtotal)}</span></div>
+            <div class="line"><span>Discount</span><span>${formatMoney(sale.discount)}</span></div>
+            <div class="line"><span>Tax</span><span>${formatMoney(sale.tax)}</span></div>
+            <div class="line total"><span>Total</span><span>${formatMoney(sale.total)}</span></div>
+            <div class="line"><span>Paid</span><span>${formatMoney(sale.paid)}</span></div>
+            <div class="line"><span>Due</span><span>${formatMoney(sale.due)}</span></div>
+          </section>
+          <p class="center thanks">Thank you for shopping with us.</p>
+        </main>
+        <script>window.onload = () => { window.print(); };</script>
+      </body>
+    </html>
+  `;
+
+  const receiptWindow = window.open("", "_blank", "width=420,height=720");
+  if (!receiptWindow) {
+    toast.error("Please allow popups to print receipt");
+    return;
+  }
+  receiptWindow.document.open();
+  receiptWindow.document.write(html);
+  receiptWindow.document.close();
+};
+
+const escapeHtml = (value: unknown) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
 const Sales = () => {
   // Filter states
   const [billNumber, setBillNumber] = useState("");
@@ -135,7 +277,6 @@ const Sales = () => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
   const [isReceiptDialogOpen, setIsReceiptDialogOpen] = useState(false);
-  const [receiptUrl, setReceiptUrl] = useState<string>("");
 
   // Payment form
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
@@ -144,7 +285,7 @@ const Sales = () => {
 
   // Refund form
   const [refundItems, setRefundItems] = useState<
-    { productId: string; quantity: number; reason: string }[]
+    { productId: string; quantity: number; unitPrice: number; reason: string }[]
   >([]);
   const [refundNote, setRefundNote] = useState("");
 
@@ -181,34 +322,33 @@ const Sales = () => {
     skip: !selectedSale?.id || !isReceiptDialogOpen,
   });
 
-  const sales = salesData?.data || [];
+  const sales = (salesData?.data || []).map(normalizeSale);
   const total = salesData?.meta?.total || 0;
   const totalPage = salesData?.meta?.totalPage || 1;
   const customers = customersData?.data || [];
   const products = productsData?.data || [];
 
-  console.log(sales);
   // Today's stats
   const todayStats = [
     {
       label: "Sold Today:",
       value: `${todaySalesData?.totalAmount?.toLocaleString() || 0} Tk`,
-      bg: "bg-[hsl(172,66%,45%)]",
+      bg: "bg-primary",
     },
     {
       label: "Today Received:",
       value: `${todaySalesData?.totalPaid?.toLocaleString() || 0} Tk`,
-      bg: "bg-[hsl(172,66%,50%)]",
+      bg: "bg-primary",
     },
     {
       label: "Today Profit:",
       value: `${todaySalesData?.totalProfit?.toLocaleString() || 0} Tk`,
-      bg: "bg-[hsl(172,66%,45%)]",
+      bg: "bg-primary",
     },
     {
       label: "Total Sold:",
       value: `${reportData?.totalAmount?.toLocaleString() || 0} Tk`,
-      bg: "bg-[hsl(172,66%,50%)]",
+      bg: "bg-primary",
     },
   ];
 
@@ -279,7 +419,8 @@ const Sales = () => {
 
   const handleRefund = async () => {
     if (!selectedSale) return;
-    if (refundItems.length === 0) {
+    const itemsToRefund = refundItems.filter((item) => item.quantity > 0);
+    if (itemsToRefund.length === 0) {
       toast.error("Please select items to refund");
       return;
     }
@@ -288,9 +429,10 @@ const Sales = () => {
       await refundSale({
         id: selectedSale.id,
         data: {
-          items: refundItems.map((item) => ({
+          items: itemsToRefund.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
+            unitPrice: item.unitPrice,
             reason: item.reason,
           })),
           note: refundNote,
@@ -313,11 +455,11 @@ const Sales = () => {
   };
 
   useEffect(() => {
-    if (receiptData?.url) {
-      setReceiptUrl(receiptData.url);
-      window.open(receiptData.url, "_blank");
+    if (receiptData && isReceiptDialogOpen) {
+      openReceiptPrintWindow(receiptData);
+      setIsReceiptDialogOpen(false);
     }
-  }, [receiptData]);
+  }, [receiptData, isReceiptDialogOpen]);
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {
@@ -331,21 +473,49 @@ const Sales = () => {
 
   return (
     <DashboardLayout title="Sale">
-      {/* Summary Stats */}
-      <div className="flex flex-wrap justify-center gap-0 mb-6">
-        {todayStats.map((stat, index) => (
-          <div key={index} className="flex">
-            <div
-              className={`${stat.bg} text-white px-6 py-2 font-medium ${index === 0 ? "rounded-l-md" : ""}`}
-            >
-              {stat.label}
+      <div className="space-y-6">
+        <section className="rounded-lg border border-primary/15 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-medium uppercase tracking-wide text-primary">
+                Sales desk
+              </p>
+              <h1 className="mt-2 text-2xl font-semibold text-gray-950">
+                Sales management
+              </h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Monitor invoices, payments, due balances, refunds, and profit from one place.
+              </p>
             </div>
-            <div className="bg-primary text-white px-6 py-2 font-bold">
-              {stat.value}
-            </div>
+            <Button asChild className="bg-primary hover:bg-primary/90">
+              <Link href="/pos">
+                <Plus className="mr-2 h-4 w-4" />
+                New Sale
+              </Link>
+            </Button>
           </div>
-        ))}
-      </div>
+        </section>
+
+        {/* Summary Stats */}
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {todayStats.map((stat, index) => (
+            <Card key={index} className="border-primary/10 shadow-sm">
+              <CardContent className="flex items-center justify-between gap-4 p-5">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    {stat.label.replace(":", "")}
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-gray-950">
+                    {stat.value}
+                  </p>
+                </div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <BarChart3 className="h-5 w-5" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
       {/* Tabs */}
       <Tabs defaultValue="sales" className="w-full">
@@ -367,8 +537,17 @@ const Sales = () => {
 
         <TabsContent value="sales" className="mt-0">
           {/* Filters */}
-          <Card className="mb-6">
-            <CardContent className="p-4">
+          <Card className="mb-6 border-primary/10 shadow-sm">
+            <CardContent className="p-0">
+              <div className="flex flex-col gap-1 border-b border-border p-5">
+                <h3 className="text-lg font-semibold text-gray-950">
+                  Filter sales
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Narrow results by invoice, date, customer, product, or payment status.
+                </p>
+              </div>
+              <div className="p-5">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <Input
                   placeholder="Bill Number / Invoice No"
@@ -449,14 +628,27 @@ const Sales = () => {
                   Export
                 </Button>
               </div>
+              </div>
             </CardContent>
           </Card>
 
           {/* Sales Table */}
-          <Card>
+          <Card className="border-primary/10 shadow-sm">
             <CardContent className="p-0">
-              <div className="p-4 border-b border-border flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Sale List</h3>
+              <div className="p-5 border-b border-border flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <Receipt className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-950">
+                      Sale List
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Real-time invoice records from the backend.
+                    </p>
+                  </div>
+                </div>
                 <Badge variant="outline" className="text-sm">
                   Total: {total} Sales
                 </Badge>
@@ -464,7 +656,7 @@ const Sales = () => {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-[hsl(172,66%,40%)] hover:bg-[hsl(172,66%,40%)]">
+                    <TableRow className="bg-primary hover:bg-primary">
                       <TableHead className="text-white font-semibold">
                         #
                       </TableHead>
@@ -549,7 +741,7 @@ const Sales = () => {
                           </TableCell>
                           <TableCell>
                             {sale.discount > 0 ? (
-                              <Badge variant="outline" className="bg-blue-50">
+                              <Badge variant="outline" className="bg-primary/10 text-primary">
                                 {sale.discountType === "PERCENTAGE"
                                   ? `${sale.discount}%`
                                   : `৳${sale.discount}`}
@@ -559,17 +751,17 @@ const Sales = () => {
                             )}
                           </TableCell>
                           <TableCell className="font-medium">
-                            ৳{sale.total.toLocaleString()}
+                            {formatMoney(sale.total)}
                           </TableCell>
                           <TableCell className="text-green-600">
-                            ৳{sale.paid.toLocaleString()}
+                            {formatMoney(sale.paid)}
                           </TableCell>
                           <TableCell
                             className={
                               sale.due > 0 ? "text-red-600 font-medium" : ""
                             }
                           >
-                            ৳{sale.due.toLocaleString()}
+                            {formatMoney(sale.due)}
                           </TableCell>
                           <TableCell
                             className={
@@ -578,7 +770,7 @@ const Sales = () => {
                                 : "text-red-600"
                             }
                           >
-                            ৳{sale.profit.toLocaleString()}
+                            {formatMoney(sale.profit)}
                           </TableCell>
                           <TableCell>
                             <Badge className={getStatusBadge(sale.status)}>
@@ -638,6 +830,7 @@ const Sales = () => {
                                       const items = sale.items.map((item) => ({
                                         productId: item.productId,
                                         quantity: 0,
+                                        unitPrice: item.unitPrice,
                                         reason: "",
                                       }));
                                       setRefundItems(items);
@@ -816,12 +1009,12 @@ const Sales = () => {
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
                     <span className="font-medium">
-                      ৳{selectedSale.subtotal.toLocaleString()}
+                      {formatMoney(selectedSale.subtotal)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Tax:</span>
-                    <span>৳{selectedSale.tax.toLocaleString()}</span>
+                    <span>{formatMoney(selectedSale.tax)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Discount:</span>
@@ -835,16 +1028,16 @@ const Sales = () => {
                   </div>
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total:</span>
-                    <span>৳{selectedSale.total.toLocaleString()}</span>
+                    <span>{formatMoney(selectedSale.total)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-green-600">
                     <span>Paid:</span>
-                    <span>৳{selectedSale.paid.toLocaleString()}</span>
+                    <span>{formatMoney(selectedSale.paid)}</span>
                   </div>
                   <div className="flex justify-between text-red-600 font-bold">
                     <span>Due:</span>
-                    <span>৳{selectedSale.due.toLocaleString()}</span>
+                    <span>{formatMoney(selectedSale.due)}</span>
                   </div>
                 </div>
               </div>
@@ -867,7 +1060,7 @@ const Sales = () => {
             <div>
               <Label>Due Amount</Label>
               <p className="text-lg font-bold text-red-600">
-                ৳{selectedSale?.due.toLocaleString()}
+                {formatMoney(selectedSale?.due)}
               </p>
             </div>
             <div>
@@ -953,11 +1146,19 @@ const Sales = () => {
                               (r) => r.productId === item.productId,
                             );
                             if (existing) {
-                              existing.quantity = Number(e.target.value);
+                              existing.quantity = Math.min(
+                                item.quantity,
+                                Math.max(0, Number(e.target.value)),
+                              );
+                              existing.unitPrice = item.unitPrice;
                             } else {
                               newItems.push({
                                 productId: item.productId,
-                                quantity: Number(e.target.value),
+                                quantity: Math.min(
+                                  item.quantity,
+                                  Math.max(0, Number(e.target.value)),
+                                ),
+                                unitPrice: item.unitPrice,
                                 reason: "",
                               });
                             }
@@ -981,10 +1182,12 @@ const Sales = () => {
                             );
                             if (existing) {
                               existing.reason = e.target.value;
+                              existing.unitPrice = item.unitPrice;
                             } else {
                               newItems.push({
                                 productId: item.productId,
                                 quantity: 0,
+                                unitPrice: item.unitPrice,
                                 reason: e.target.value,
                               });
                             }
@@ -1019,8 +1222,9 @@ const Sales = () => {
       {/* Footer */}
       <div className="text-center text-sm text-muted-foreground mt-8">
         Copyright © 2026{" "}
-        <span className="text-primary font-medium">SOFTGHOR</span>. All rights
+        <span className="text-primary font-medium">POS Software</span>. All rights
         reserved.
+      </div>
       </div>
     </DashboardLayout>
   );

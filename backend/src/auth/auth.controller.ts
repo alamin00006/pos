@@ -16,11 +16,17 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { Public, CurrentUser, Permissions } from '../common/decorators';
 
+/**
+ * Exposes HTTP endpoints for Auth operations.
+ */
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  /**
+   * User login.
+   */
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -51,6 +57,9 @@ export class AuthController {
     };
   }
 
+  /**
+   * Refresh access token.
+   */
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
@@ -83,6 +92,9 @@ export class AuthController {
     };
   }
 
+  /**
+   * User logout.
+   */
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('access-token')
@@ -102,6 +114,9 @@ export class AuthController {
     };
   }
 
+  /**
+   * Get current user profile.
+   */
   @Get('me')
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get current user profile' })
@@ -114,6 +129,9 @@ export class AuthController {
     };
   }
 
+  /**
+   * Change user password.
+   */
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('access-token')

@@ -3,10 +3,16 @@ import { PrismaService } from '../prisma/prisma.service';
 import { DateRangeQueryDto, TopItemsQueryDto, CategoryReportQueryDto, CustomerReportQueryDto, SupplierReportQueryDto } from './dto/report-query.dto';
 import { SaleStatus, PurchaseStatus } from '@prisma/client';
 
+/**
+ * Coordinates Reports business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class ReportsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Handles the get date range workflow for Reports records.
+   */
   private getDateRange(query: DateRangeQueryDto) {
     const startDate = query.startDate ? new Date(query.startDate) : undefined;
     const endDate = query.endDate ? new Date(query.endDate) : undefined;
@@ -14,6 +20,9 @@ export class ReportsService {
     return { startDate, endDate };
   }
 
+  /**
+   * Handles the get today range workflow for Reports records.
+   */
   private getTodayRange() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -22,6 +31,9 @@ export class ReportsService {
     return { startDate: today, endDate: tomorrow };
   }
 
+  /**
+   * Handles the get current month range workflow for Reports records.
+   */
   private getCurrentMonthRange() {
     const now = new Date();
     const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -30,6 +42,9 @@ export class ReportsService {
   }
 
   // ==================== TODAY REPORT ====================
+  /**
+   * Builds the requested Reports report from current business data.
+   */
   async getTodayReport() {
     const { startDate, endDate } = this.getTodayRange();
 
@@ -90,6 +105,9 @@ export class ReportsService {
   }
 
   // ==================== DAILY REPORT ====================
+  /**
+   * Builds the requested Reports report from current business data.
+   */
   async getDailyReport(query: DateRangeQueryDto) {
     const { startDate, endDate } = this.getDateRange(query);
     const where: any = { deletedAt: null };
@@ -140,6 +158,9 @@ export class ReportsService {
   }
 
   // ==================== CURRENT MONTH REPORT ====================
+  /**
+   * Builds the requested Reports report from current business data.
+   */
   async getCurrentMonthReport() {
     const { startDate, endDate } = this.getCurrentMonthRange();
 
@@ -212,6 +233,9 @@ export class ReportsService {
   }
 
   // ==================== PROFIT/LOSS REPORT ====================
+  /**
+   * Builds the requested Reports report from current business data.
+   */
   async getProfitLossReport(query: DateRangeQueryDto) {
     const { startDate, endDate } = this.getDateRange(query);
     const dateFilter: any = {};
@@ -296,6 +320,9 @@ export class ReportsService {
   }
 
   // ==================== TOP PRODUCTS REPORT ====================
+  /**
+   * Builds the requested Reports report from current business data.
+   */
   async getTopProductsReport(query: TopItemsQueryDto) {
     const { startDate, endDate } = this.getDateRange(query);
     const limit = query.limit || 10;
@@ -337,6 +364,9 @@ export class ReportsService {
   }
 
   // ==================== TOP CUSTOMERS REPORT ====================
+  /**
+   * Builds the requested Reports report from current business data.
+   */
   async getTopCustomersReport(query: TopItemsQueryDto) {
     const { startDate, endDate } = this.getDateRange(query);
     const limit = query.limit || 10;
@@ -377,6 +407,9 @@ export class ReportsService {
   }
 
   // ==================== CATEGORY WISE REPORT ====================
+  /**
+   * Builds the requested Reports report from current business data.
+   */
   async getCategoryWiseReport(query: CategoryReportQueryDto) {
     const { startDate, endDate } = this.getDateRange(query);
 
@@ -451,6 +484,9 @@ export class ReportsService {
   }
 
   // ==================== SALES REPORT ====================
+  /**
+   * Builds the requested Reports report from current business data.
+   */
   async getSalesReport(query: DateRangeQueryDto) {
     const { startDate, endDate } = this.getDateRange(query);
 
@@ -500,6 +536,9 @@ export class ReportsService {
   }
 
   // ==================== PURCHASE REPORT ====================
+  /**
+   * Builds the requested Reports report from current business data.
+   */
   async getPurchaseReport(query: DateRangeQueryDto) {
     const { startDate, endDate } = this.getDateRange(query);
 
@@ -552,6 +591,9 @@ export class ReportsService {
   }
 
   // ==================== CUSTOMER DUE REPORT ====================
+  /**
+   * Builds the requested Reports report from current business data.
+   */
   async getCustomerDueReport(query: CustomerReportQueryDto) {
     const where: any = { deletedAt: null };
     if (query.customerId) where.id = query.customerId;
@@ -584,6 +626,9 @@ export class ReportsService {
   }
 
   // ==================== SUPPLIER DUE REPORT ====================
+  /**
+   * Builds the requested Reports report from current business data.
+   */
   async getSupplierDueReport(query: SupplierReportQueryDto) {
     const where: any = { deletedAt: null };
     if (query.supplierId) where.id = query.supplierId;
@@ -615,6 +660,9 @@ export class ReportsService {
   }
 
   // ==================== LOW STOCK REPORT ====================
+  /**
+   * Builds the requested Reports report from current business data.
+   */
   async getLowStockReport() {
     const products = await this.prisma.product.findMany({
       where: { deletedAt: null },
@@ -656,6 +704,9 @@ export class ReportsService {
   }
 
   // ==================== SUMMARY REPORT ====================
+  /**
+   * Builds the requested Reports report from current business data.
+   */
   async getSummaryReport() {
     const [
       totalCustomers,
@@ -731,6 +782,9 @@ export class ReportsService {
     };
   }
 
+  /**
+   * Handles the get cost of goods sold workflow for Reports records.
+   */
   private async getCostOfGoodsSold(startDate?: Date, endDate?: Date) {
     const dateFilter: any = {};
     if (startDate) dateFilter.gte = startDate;

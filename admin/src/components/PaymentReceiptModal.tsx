@@ -162,8 +162,8 @@ const PaymentReceiptModal = ({ open, onClose, payment }: PaymentReceiptModalProp
         <div ref={receiptRef} className="receipt-container">
           {/* Header */}
           <div className="header text-center border-b-2 border-dashed border-border pb-4 mb-4">
-            <div className="logo text-2xl font-bold text-primary">SOFTGHOR</div>
-            <div className="subtitle text-xs text-muted-foreground">Digital POS Software</div>
+            <div className="logo text-2xl font-bold text-primary">POS Software</div>
+            <div className="subtitle text-xs text-muted-foreground">Digital POS Management</div>
             <div className="text-xs text-muted-foreground mt-1">01958-104255, 01958-104250</div>
           </div>
 

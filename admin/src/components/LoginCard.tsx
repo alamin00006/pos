@@ -12,6 +12,8 @@ import toast from "react-hot-toast";
 import { useLoginMutation } from "@/redux/api/authApi";
 import { useAppDispatch } from "@/hooks/reduxHook";
 import { setCredentials } from "@/redux/authSlice";
+import { setToLocalStorage } from "@/lib/utils/local-storage";
+import { authKey } from "@/constants/authKey";
 
 const LoginCard = () => {
   const [email, setEmail] = useState("");
@@ -40,6 +42,10 @@ const LoginCard = () => {
           user: res.data.user,
         }),
       );
+      setToLocalStorage(authKey, res.data.accessToken);
+      if (res.data.user?.defaultBranchId) {
+        setToLocalStorage("selectedBranchId", res.data.user.defaultBranchId);
+      }
 
       toast.success("Login successful");
 
@@ -61,10 +67,10 @@ const LoginCard = () => {
           </div>
           <div className="text-left">
             <h1 className="text-2xl font-bold text-foreground tracking-tight">
-              SOFT<span className="text-primary">GHOR</span>
+              POS <span className="text-primary">Software</span>
             </h1>
             <p className="text-xs text-muted-foreground uppercase tracking-wider">
-              More than a software company
+              Point of sale management
             </p>
           </div>
         </div>
@@ -77,7 +83,7 @@ const LoginCard = () => {
           <Label>Email</Label>
           <Input
             type="email"
-            placeholder="admin@softghor.com"
+            placeholder="pos@admin.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />

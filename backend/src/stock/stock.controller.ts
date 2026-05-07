@@ -5,12 +5,18 @@ import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { StockQueryDto } from './dto/stock-query.dto';
 import { CurrentBranch, Permissions } from '../common/decorators';
 
+/**
+ * Exposes HTTP endpoints for Stock operations.
+ */
 @ApiTags('Stock')
 @ApiBearerAuth('access-token')
 @Controller('stock')
 export class StockController {
   constructor(private readonly stockService: StockService) {}
 
+  /**
+   * Get stock report for all products.
+   */
   @Get()
   @Permissions('stock')
   @ApiOperation({ summary: 'Get stock report for all products' })
@@ -18,6 +24,9 @@ export class StockController {
     return this.stockService.getStockReport(query, branchId);
   }
 
+  /**
+   * Get low stock products.
+   */
   @Get('low')
   @Permissions('low_stock_report')
   @ApiOperation({ summary: 'Get low stock products' })
@@ -25,6 +34,9 @@ export class StockController {
     return this.stockService.getLowStock(query, branchId);
   }
 
+  /**
+   * Get stock ledger for a product.
+   */
   @Get('ledger/:productId')
   @Permissions('stock')
   @ApiOperation({ summary: 'Get stock ledger for a product' })
@@ -32,6 +44,9 @@ export class StockController {
     return this.stockService.getProductLedger(productId, query, branchId);
   }
 
+  /**
+   * Manually adjust stock.
+   */
   @Post('adjust')
   @Permissions('barcode_add_stock')
   @ApiOperation({ summary: 'Manually adjust stock' })
@@ -39,6 +54,9 @@ export class StockController {
     return this.stockService.adjustStock(adjustStockDto, branchId);
   }
 
+  /**
+   * Set opening stock for a product.
+   */
   @Post('opening/:productId')
   @Permissions('barcode_add_stock')
   @ApiOperation({ summary: 'Set opening stock for a product' })

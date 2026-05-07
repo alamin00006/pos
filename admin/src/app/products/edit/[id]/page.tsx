@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { Save, Plus, ArrowLeft, RefreshCw } from "lucide-react";
+import { PackageCheck, Save, Plus, ArrowLeft, RefreshCw } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import AddCategoryModal from "@/components/AddCategoryModal";
@@ -268,6 +268,25 @@ const EditProduct = () => {
 
   return (
     <DashboardLayout title="Edit Product">
+      <div className="space-y-6">
+        <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-primary">Inventory</p>
+              <h1 className="mt-1 text-3xl font-bold text-foreground">
+                Edit product
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                Update product pricing, categorization, stock alert, and details.
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => navigate("/products")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Products
+            </Button>
+          </div>
+        </section>
+
       <Tabs defaultValue="edit" className="w-full">
         <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start h-auto p-0 mb-6">
           <TabsTrigger
@@ -286,10 +305,20 @@ const EditProduct = () => {
         </TabsList>
 
         <TabsContent value="edit" className="mt-0">
-          <Card>
+          <Card className="border-border shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-6 gap-3">
-                <h3 className="text-lg font-semibold">Edit Product</h3>
+                <div className="flex items-center gap-3">
+                  <div className="rounded-md bg-primary/10 p-2">
+                    <PackageCheck className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Product details</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Review existing data before saving changes.
+                    </p>
+                  </div>
+                </div>
 
                 <div className="flex items-center gap-2">
                   <Button
@@ -578,7 +607,10 @@ const EditProduct = () => {
                   />
                 </div>
 
-                <div className="flex justify-center pt-4">
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => navigate("/products")}>
+                    Cancel
+                  </Button>
                   <Button
                     type="submit"
                     className="px-8"
@@ -593,6 +625,7 @@ const EditProduct = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
 
       <AddCategoryModal
         open={showCategoryModal}

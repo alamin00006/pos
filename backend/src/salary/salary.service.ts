@@ -6,10 +6,16 @@ import { BankTransactionType, CashBookType, CashBookSource, PaymentMethod } from
 import { Decimal } from '@prisma/client/runtime/library';
 import { addCashBookEntry, recordBankTransaction } from '../common/utils/pos-accounting.util';
 
+/**
+ * Coordinates Salary business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class SalaryService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Processes payment changes and keeps related ledgers in sync.
+   */
   private normalizePaymentMethod(input?: string): PaymentMethod {
     if (!input) return PaymentMethod.CASH;
     const value = input.toUpperCase();
@@ -18,6 +24,9 @@ export class SalaryService {
     return PaymentMethod.CASH;
   }
 
+  /**
+   * Creates a new Salary record after validating the request payload.
+   */
   async create(dto: any) {
     const employee = await this.prisma.employee.findFirst({ where: { id: dto.employeeId, deletedAt: null } });
     if (!employee) throw new NotFoundException('Employee not found');
@@ -76,6 +85,9 @@ export class SalaryService {
     });
   }
 
+  /**
+   * Retrieves filtered Salary records for API consumers.
+   */
   async findAll(query: PaginationDto & { employeeId?: string; month?: number; year?: number }) {
     const { page = 1, limit = 10, sortBy = 'paymentDate', sortOrder = 'desc', employeeId, month, year } = query;
     const where: any = {};
@@ -97,6 +109,9 @@ export class SalaryService {
     return { data, meta: getPaginationMeta(total, page, limit) };
   }
 
+  /**
+   * Retrieves a single Salary record by identifier.
+   */
   async findOne(id: string) {
     const salary = await this.prisma.salaryPayment.findUnique({
       where: { id },

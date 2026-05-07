@@ -206,7 +206,7 @@ const AddEstimate = () => {
               </TableBody>
             </Table>
             {/* Total Row */}
-            <div className="bg-[hsl(0,65%,65%)] text-white flex">
+            <div className="bg-primary text-white flex">
               <div className="flex-1 py-3 px-4 text-center font-medium">
                 Total Qty: {totalQty}
               </div>
@@ -301,7 +301,7 @@ const AddEstimate = () => {
 
       {/* Footer */}
       <div className="text-center text-sm text-muted-foreground mt-8">
-        Copyright © 2026 <span className="text-primary font-medium">SOFTGHOR</span>. All rights reserved.
+        Copyright © 2026 <span className="text-primary font-medium">POS Software</span>. All rights reserved.
       </div>
     </DashboardLayout>
   );

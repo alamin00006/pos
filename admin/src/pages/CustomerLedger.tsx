@@ -43,7 +43,6 @@ const CustomerLedger = () => {
   const customer = customers.find((c) => c.id === selectedCustomer);
 
   const handleFilter = () => {
-    console.log("Filtering...", { selectedCustomer, startDate, endDate });
   };
 
   const handleReset = () => {
@@ -116,17 +115,12 @@ const CustomerLedger = () => {
           {/* Company Header */}
           <div className="flex flex-col md:flex-row justify-between items-start gap-6 pb-6 border-b border-border">
             <div className="flex items-center">
-              <div className="flex">
-                <div className="bg-[hsl(215,28%,17%)] text-white px-4 py-3 font-bold text-2xl">
-                  SOFT
-                </div>
-                <div className="bg-primary text-white px-4 py-3 font-bold text-2xl">
-                  GHOR
-                </div>
+              <div className="rounded-md bg-primary px-4 py-3 text-2xl font-bold text-primary-foreground">
+                POS Software
               </div>
               <div className="ml-2">
                 <p className="text-[10px] text-muted-foreground tracking-wider">
-                  MORE THAN A SOFTWARE COMPANY
+                  POINT OF SALE MANAGEMENT
                 </p>
               </div>
             </div>
@@ -145,7 +139,7 @@ const CustomerLedger = () => {
               <p>
                 <span className="text-muted-foreground">Email : </span>
                 <span className="font-medium text-primary">
-                  info@softghor.com
+                  info@possoftware.com
                 </span>
               </p>
             </div>
@@ -170,7 +164,7 @@ const CustomerLedger = () => {
             </h2>
             <Table>
               <TableHeader>
-                <TableRow className="bg-[hsl(172,66%,40%)] hover:bg-[hsl(172,66%,40%)]">
+                <TableRow className="bg-primary hover:bg-primary">
                   <TableHead className="text-white font-semibold">Date</TableHead>
                   <TableHead className="text-white font-semibold">
                     Particulars
@@ -213,7 +207,7 @@ const CustomerLedger = () => {
         {/* Footer */}
         <footer className="text-center text-sm text-muted-foreground pt-4 border-t border-border">
           Copyright © 2026{" "}
-          <span className="text-primary font-medium">SOFTGHOR</span>. All rights
+          <span className="text-primary font-medium">POS Software</span>. All rights
           reserved.
         </footer>
       </div>

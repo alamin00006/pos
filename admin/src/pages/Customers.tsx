@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,41 +14,81 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Search, Plus, Edit, Trash2, Users, UserPlus, ShoppingBag, TrendingUp } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import {
+  useDeleteCustomerMutation,
+  useGetCustomersQuery,
+} from "@/redux/api/customerApi";
 
-const customersData = [
-  { id: 1, name: "Rahman Store", phone: "01711-123456", email: "rahman@store.com", orders: 156, totalSpent: 245000, lastOrder: "2 hours ago" },
-  { id: 2, name: "Karim Traders", phone: "01812-234567", email: "karim@traders.com", orders: 89, totalSpent: 178500, lastOrder: "5 hours ago" },
-  { id: 3, name: "Hasan Enterprise", phone: "01913-345678", email: "hasan@enterprise.com", orders: 234, totalSpent: 456000, lastOrder: "1 day ago" },
-  { id: 4, name: "Alam & Sons", phone: "01614-456789", email: "alam@sons.com", orders: 67, totalSpent: 89000, lastOrder: "2 days ago" },
-  { id: 5, name: "Jabbar Shop", phone: "01515-567890", email: "jabbar@shop.com", orders: 45, totalSpent: 56000, lastOrder: "3 days ago" },
-  { id: 6, name: "Molla Variety", phone: "01716-678901", email: "molla@variety.com", orders: 123, totalSpent: 198000, lastOrder: "4 hours ago" },
-  { id: 7, name: "Sikder Mart", phone: "01817-789012", email: "sikder@mart.com", orders: 78, totalSpent: 134500, lastOrder: "6 hours ago" },
-  { id: 8, name: "Chowdhury Store", phone: "01918-890123", email: "chowdhury@store.com", orders: 201, totalSpent: 378000, lastOrder: "8 hours ago" },
-];
+const money = (value: number) => `Tk ${Number(value || 0).toLocaleString()}`;
 
 const Customers = () => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
-  const filteredCustomers = customersData.filter(
-    (customer) =>
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone.includes(searchTerm) ||
-      customer.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const { data, isLoading, isFetching } = useGetCustomersQuery({
+    page,
+    limit,
+    search: searchTerm || undefined,
+  });
+  const [deleteCustomer, { isLoading: deleting }] = useDeleteCustomerMutation();
+
+  const customers = data?.data ?? [];
+  const meta = data?.meta;
+  const totalCustomers = meta?.total ?? customers.length;
 
   const stats = [
-    { title: "Total Customers", value: "892", icon: Users, change: "+12 this month" },
-    { title: "New Customers", value: "45", icon: UserPlus, change: "This month" },
-    { title: "Total Orders", value: "3,456", icon: ShoppingBag, change: "+8.5% growth" },
-    { title: "Avg. Order Value", value: "৳2,850", icon: TrendingUp, change: "+5.2% growth" },
+    { title: "Total Customers", value: totalCustomers.toLocaleString(), icon: Users, change: "From backend" },
+    { title: "Current Page", value: customers.length.toString(), icon: UserPlus, change: "Visible records" },
+    { title: "Opening Balance", value: money(customers.reduce((sum: number, item: any) => sum + Number(item.openingBalance || 0), 0)), icon: ShoppingBag, change: "Visible page" },
+    { title: "Due Balance", value: money(customers.reduce((sum: number, item: any) => sum + Number(item.due || 0), 0)), icon: TrendingUp, change: "Visible page" },
   ];
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this customer?")) return;
+    try {
+      await deleteCustomer(id).unwrap();
+      toast({ title: "Deleted", description: "Customer deleted successfully" });
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error?.data?.message || "Could not delete customer",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <DashboardLayout title="Customers">
+      <div className="space-y-6">
+      <section className="rounded-lg border border-primary/15 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-wide text-primary">
+              Customer accounts
+            </p>
+            <h1 className="mt-2 text-2xl font-semibold text-gray-950">
+              Customers
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Manage customer profiles, opening balances, dues, and contact details.
+            </p>
+          </div>
+          <Button asChild className="bg-primary hover:bg-primary/90">
+            <Link href="/customers/add">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Customer
+            </Link>
+          </Button>
+        </div>
+      </section>
+
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {stats.map((stat, index) => (
-          <Card key={index}>
+          <Card key={index} className="border-primary/10 shadow-sm">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                 <stat.icon className="w-5 h-5 text-primary" />
@@ -63,25 +104,33 @@ const Customers = () => {
       </div>
 
       {/* Customers Table */}
-      <Card>
+      <Card className="border-primary/10 shadow-sm">
         <CardHeader className="border-b border-border">
-          <div className="flex items-center justify-between">
-            <CardTitle>All Customers</CardTitle>
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <CardTitle>All Customers</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {isFetching ? "Updating..." : `${totalCustomers} backend records`}
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search customers..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1);
+                  }}
+                  className="pl-10 w-full sm:w-64"
                 />
               </div>
               <Button asChild>
-                <a href="/customers/add">
+                <Link href="/customers/add">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Customer
-                </a>
+                </Link>
               </Button>
             </div>
           </div>
@@ -100,7 +149,19 @@ const Customers = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCustomers.map((customer) => (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center">
+                    Loading customers...
+                  </TableCell>
+                </TableRow>
+              ) : customers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center">
+                    No customers found
+                  </TableCell>
+                </TableRow>
+              ) : customers.map((customer: any) => (
                 <TableRow key={customer.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -112,16 +173,16 @@ const Customers = () => {
                       <span className="font-medium">{customer.name}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{customer.phone}</TableCell>
-                  <TableCell className="text-muted-foreground">{customer.email}</TableCell>
-                  <TableCell>{customer.orders}</TableCell>
-                  <TableCell className="font-medium">৳{customer.totalSpent.toLocaleString()}</TableCell>
-                  <TableCell className="text-muted-foreground">{customer.lastOrder}</TableCell>
+                  <TableCell className="text-muted-foreground">{customer.phone || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground">{customer.email || "-"}</TableCell>
+                  <TableCell>{customer.orderCount ?? customer.orders ?? 0}</TableCell>
+                  <TableCell className="font-medium">{money(customer.totalSpent ?? customer.openingBalance ?? 0)}</TableCell>
+                  <TableCell className="text-muted-foreground">{customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : "-"}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" title="Edit screen coming soon" disabled>
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive">
+                    <Button variant="ghost" size="icon" className="text-destructive" disabled={deleting} onClick={() => handleDelete(customer.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </TableCell>
@@ -131,6 +192,20 @@ const Customers = () => {
           </Table>
         </CardContent>
       </Card>
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Page {meta?.page ?? page} of {meta?.totalPage ?? meta?.totalPages ?? 1}
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
+            Previous
+          </Button>
+          <Button variant="outline" size="sm" disabled={page >= (meta?.totalPage ?? meta?.totalPages ?? 1)} onClick={() => setPage((prev) => prev + 1)}>
+            Next
+          </Button>
+        </div>
+      </div>
+      </div>
     </DashboardLayout>
   );
 };

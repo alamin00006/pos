@@ -1,6 +1,9 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
+/**
+ * Manages Prisma client lifecycle and shared persistence helpers.
+ */
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
@@ -16,6 +19,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     });
   }
 
+  /**
+   * Initializes the database connection when the module starts.
+   */
   async onModuleInit() {
     await this.$connect();
     this.logger.log('Database connected');
@@ -29,17 +35,26 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     }
   }
 
+  /**
+   * Closes the database connection during module shutdown.
+   */
   async onModuleDestroy() {
     await this.$disconnect();
     this.logger.log('Database disconnected');
   }
 
   // Helper for soft delete queries
+  /**
+   * Returns the standard filter for active, non-deleted records.
+   */
   notDeleted() {
     return { deletedAt: null };
   }
 
   // Helper for soft delete
+  /**
+   * Returns the standard payload used to mark a record as deleted.
+   */
   softDelete() {
     return { deletedAt: new Date() };
   }

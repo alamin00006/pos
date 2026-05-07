@@ -19,7 +19,23 @@ export type TagType =
   | "ProductStock"
   | "sales"
   | "supplier"
-  | "customers";
+  | "customers"
+  | "Purchase"
+  | "Return"
+  | "Payment"
+  | "Expense"
+  | "ExpenseCategory"
+  | "BankAccount"
+  | "CashBook"
+  | "Damage"
+  | "Employee"
+  | "Salary"
+  | "Asset"
+  | "Estimate"
+  | "Report"
+  | "Setting"
+  | "Backup"
+  | "Notification";
 
 export const baseApi = createApi({
   reducerPath: "api",
@@ -43,6 +59,22 @@ export const baseApi = createApi({
     "supplier",
     "sales",
     "customers",
+    "Purchase",
+    "Return",
+    "Payment",
+    "Expense",
+    "ExpenseCategory",
+    "BankAccount",
+    "CashBook",
+    "Damage",
+    "Employee",
+    "Salary",
+    "Asset",
+    "Estimate",
+    "Report",
+    "Setting",
+    "Backup",
+    "Notification",
   ] as TagType[],
   endpoints: () => ({}),
 });

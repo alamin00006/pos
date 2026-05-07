@@ -4,12 +4,18 @@ import { SalesService } from './sales.service';
 import { CreateSaleDto, UpdateSaleDto, SaleQueryDto, AddSalePaymentDto, RefundSaleDto } from './dto';
 import { CurrentBranch, Permissions, CurrentUser } from '../common/decorators';
 
+/**
+ * Exposes HTTP endpoints for Sales operations.
+ */
 @ApiTags('Sales')
 @ApiBearerAuth('access-token')
 @Controller('sales')
 export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 
+  /**
+   * Get all sales with pagination and filtering.
+   */
   @Get()
   @Permissions('sales_list', 'add_sale')
   @ApiOperation({ summary: 'Get all sales with pagination and filtering' })
@@ -17,6 +23,9 @@ export class SalesController {
     return this.salesService.findAll(query, branchId);
   }
 
+  /**
+   * Get today sales summary.
+   */
   @Get('today')
   @Permissions('today_sold', 'dashboard')
   @ApiOperation({ summary: 'Get today sales summary' })
@@ -24,6 +33,9 @@ export class SalesController {
     return this.salesService.getTodaySales(branchId);
   }
 
+  /**
+   * Get sales report with date range.
+   */
   @Get('report')
   @Permissions('sales_report')
   @ApiOperation({ summary: 'Get sales report with date range' })
@@ -31,6 +43,9 @@ export class SalesController {
     return this.salesService.getSalesReport(query, branchId);
   }
 
+  /**
+   * Get sale by ID.
+   */
   @Get(':id')
   @Permissions('view_sale', 'sales_list')
   @ApiOperation({ summary: 'Get sale by ID' })
@@ -39,6 +54,9 @@ export class SalesController {
     return this.salesService.findOne(id, branchId);
   }
 
+  /**
+   * Get sale receipt with company details.
+   */
   @Get(':id/receipt')
   @Permissions('sale_receipt')
   @ApiOperation({ summary: 'Get sale receipt with company details' })
@@ -47,6 +65,9 @@ export class SalesController {
     return this.salesService.getReceipt(id);
   }
 
+  /**
+   * Create new sale (POS).
+   */
   @Post()
   @Permissions('add_sale')
   @ApiOperation({ summary: 'Create new sale (POS)' })
@@ -54,6 +75,9 @@ export class SalesController {
     return this.salesService.create(dto, userId, branchId);
   }
 
+  /**
+   * Update sale.
+   */
   @Put(':id')
   @Permissions('edit_sale_payment')
   @ApiOperation({ summary: 'Update sale' })
@@ -62,6 +86,9 @@ export class SalesController {
     return this.salesService.update(id, dto);
   }
 
+  /**
+   * Delete sale (soft delete).
+   */
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @Permissions('delete_return')
@@ -71,6 +98,9 @@ export class SalesController {
     return this.salesService.remove(id);
   }
 
+  /**
+   * Add payment to existing sale.
+   */
   @Post(':id/payment')
   @Permissions('edit_sale_payment')
   @ApiOperation({ summary: 'Add payment to existing sale' })
@@ -79,6 +109,9 @@ export class SalesController {
     return this.salesService.addPayment(id, dto, branchId);
   }
 
+  /**
+   * Duplicate an existing sale.
+   */
   @Post(':id/duplicate')
   @Permissions('pos_duplicate_sale')
   @ApiOperation({ summary: 'Duplicate an existing sale' })
@@ -87,6 +120,9 @@ export class SalesController {
     return this.salesService.duplicate(id, userId);
   }
 
+  /**
+   * Refund a sale (create return).
+   */
   @Post(':id/refund')
   @Permissions('pos_refund_sale')
   @ApiOperation({ summary: 'Refund a sale (create return)' })

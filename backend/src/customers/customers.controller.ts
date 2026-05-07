@@ -7,48 +7,75 @@ import { CustomerPaymentDto } from './dto/customer-payment.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { CurrentBranch, Permissions, CurrentUser } from '../common/decorators';
 
+/**
+ * Exposes HTTP endpoints for Customers operations.
+ */
 @ApiTags('Customers')
 @ApiBearerAuth('access-token')
 @Controller('customers')
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
+  /**
+   * Get all customers.
+   */
   @Get()
   @Permissions('create_customer')
   @ApiOperation({ summary: 'Get all customers' })
   async findAll(@Query() query: PaginationDto, @CurrentBranch() branchId?: string) { return this.customersService.findAll(query, branchId); }
 
+  /**
+   * Get customers with due amounts.
+   */
   @Get('due-report')
   @Permissions('customer_due_report')
   @ApiOperation({ summary: 'Get customers with due amounts' })
   async getDueReport(@Query() query: PaginationDto, @CurrentBranch() branchId?: string) { return this.customersService.getDueReport(query, branchId); }
 
+  /**
+   * Get customer by ID.
+   */
   @Get(':id')
   @Permissions('create_customer')
   @ApiOperation({ summary: 'Get customer by ID' })
   async findOne(@Param('id') id: string, @CurrentBranch() branchId?: string) { return this.customersService.findOne(id, branchId); }
 
+  /**
+   * Get customer ledger.
+   */
   @Get(':id/ledger')
   @Permissions('customer_ledger', 'customer_ledger_report')
   @ApiOperation({ summary: 'Get customer ledger' })
   async getLedger(@Param('id') id: string, @Query() query: PaginationDto) { return this.customersService.getLedger(id, query); }
 
+  /**
+   * Create new customer.
+   */
   @Post()
   @Permissions('add_customer', 'create_customer', 'pos_add_customer')
   @ApiOperation({ summary: 'Create new customer' })
   async create(@Body() dto: CreateCustomerDto, @CurrentUser('sub') userId: string, @CurrentBranch() branchId?: string) { return this.customersService.create(dto, userId, branchId); }
 
+  /**
+   * Update customer.
+   */
   @Put(':id')
   @Permissions('edit_customer')
   @ApiOperation({ summary: 'Update customer' })
   async update(@Param('id') id: string, @Body() dto: UpdateCustomerDto) { return this.customersService.update(id, dto); }
 
+  /**
+   * Delete customer.
+   */
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @Permissions('delete_customer')
   @ApiOperation({ summary: 'Delete customer' })
   async remove(@Param('id') id: string) { return this.customersService.remove(id); }
 
+  /**
+   * Receive payment from customer.
+   */
   @Post(':id/payment')
   @Permissions('customer_make_payment')
   @ApiOperation({ summary: 'Receive payment from customer' })

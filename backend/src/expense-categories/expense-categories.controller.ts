@@ -5,12 +5,18 @@ import { Permissions } from '../common/decorators';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { CreateExpenseCategoryDto, UpdateExpenseCategoryDto } from './dto';
 
+/**
+ * Exposes HTTP endpoints for Expense Categories operations.
+ */
 @ApiTags('Expense Categories')
 @ApiBearerAuth()
 @Controller('expense-categories')
 export class ExpenseCategoriesController {
   constructor(private readonly service: ExpenseCategoriesService) {}
 
+  /**
+   * Create expense category.
+   */
   @Post()
   @Permissions('add_expense_category')
   @ApiOperation({ summary: 'Create expense category' })
@@ -18,6 +24,9 @@ export class ExpenseCategoriesController {
     return this.service.create(dto);
   }
 
+  /**
+   * Get all expense categories.
+   */
   @Get()
   @Permissions('create_expense_category')
   @ApiOperation({ summary: 'Get all expense categories' })
@@ -25,6 +34,9 @@ export class ExpenseCategoriesController {
     return this.service.findAll(query);
   }
 
+  /**
+   * Get expense category by ID.
+   */
   @Get(':id')
   @Permissions('create_expense_category')
   @ApiOperation({ summary: 'Get expense category by ID' })
@@ -32,6 +44,9 @@ export class ExpenseCategoriesController {
     return this.service.findOne(id);
   }
 
+  /**
+   * Update expense category.
+   */
   @Patch(':id')
   @Permissions('edit_expense_category')
   @ApiOperation({ summary: 'Update expense category' })
@@ -39,6 +54,9 @@ export class ExpenseCategoriesController {
     return this.service.update(id, dto);
   }
 
+  /**
+   * Delete expense category.
+   */
   @Delete(':id')
   @Permissions('delete_expense_category')
   @ApiOperation({ summary: 'Delete expense category' })

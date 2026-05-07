@@ -3,10 +3,16 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { getPaginationMeta } from '../common/utils/pagination.util';
 
+/**
+ * Coordinates Cash Book business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class CashBookService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Retrieves filtered Cash Book records for API consumers.
+   */
   async findAll(query: PaginationDto & { startDate?: string; endDate?: string; type?: string; source?: string }) {
     const { page = 1, limit = 10, sortBy = 'entryDate', sortOrder = 'desc', startDate, endDate, type, source } = query;
     const where: any = {};
@@ -32,11 +38,17 @@ export class CashBookService {
     return { data, meta: getPaginationMeta(total, page, limit) };
   }
 
+  /**
+   * Handles the get balance workflow for Cash Book records.
+   */
   async getBalance() {
     const lastEntry = await this.prisma.cashBook.findFirst({ orderBy: { createdAt: 'desc' } });
     return { balance: lastEntry?.balance || 0 };
   }
 
+  /**
+   * Handles the get summary workflow for Cash Book records.
+   */
   async getSummary(query: { startDate?: string; endDate?: string }) {
     const where: any = {};
     if (query.startDate || query.endDate) {

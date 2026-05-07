@@ -14,10 +14,16 @@ import {
 } from "../common/utils/pagination.util";
 import { Prisma } from "@prisma/client";
 
+/**
+ * Coordinates Products business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Retrieves filtered Products records for API consumers.
+   */
   async findAll(query: ProductQueryDto) {
     const {
       page,
@@ -76,6 +82,9 @@ export class ProductsService {
     return paginate(productsWithStock, total, page!, limit!);
   }
 
+  /**
+   * Handles the search workflow for Products records.
+   */
   async search(q: string) {
     if (!q || q.length < 2) return [];
 
@@ -104,6 +113,9 @@ export class ProductsService {
     }));
   }
 
+  /**
+   * Handles the find by barcode workflow for Products records.
+   */
   async findByBarcode(barcode: string) {
     const product = await this.prisma.product.findFirst({
       where: { barcode, ...this.prisma.notDeleted() },
@@ -122,6 +134,9 @@ export class ProductsService {
     return { ...product, stock };
   }
 
+  /**
+   * Retrieves a single Products record by identifier.
+   */
   async findOne(id: string) {
     const product = await this.prisma.product.findFirst({
       where: { id, ...this.prisma.notDeleted() },
@@ -140,13 +155,19 @@ export class ProductsService {
     return { ...product, stock };
   }
 
+  /**
+   * Handles the get stock workflow for Products records.
+   */
   async getStock(id: string) {
     await this.findOne(id);
     const stock = await this.calculateStock(id);
     return { productId: id, stock };
   }
 
-  // ✅ userId optional: pass from controller (req.user.id)
+  // âœ… userId optional: pass from controller (req.user.id)
+  /**
+   * Creates a new Products record after validating the request payload.
+   */
   async create(createProductDto: CreateProductDto, userId?: string) {
     const existingCode = await this.prisma.product.findUnique({
       where: { productCode: createProductDto.productCode },
@@ -187,7 +208,7 @@ export class ProductsService {
             quantity: openingStock,
             referenceId: product.id,
             note: "Opening stock",
-            createdById: userId ?? null, // ✅ new
+            createdById: userId ?? null, // âœ… new
           },
         });
       }
@@ -199,7 +220,10 @@ export class ProductsService {
     return { ...created, stock };
   }
 
-  // ✅ userId optional: pass from controller (req.user.id)
+  // âœ… userId optional: pass from controller (req.user.id)
+  /**
+   * Updates an existing Products record with the provided changes.
+   */
   async update(
     id: string,
     updateProductDto: UpdateProductDto,
@@ -257,11 +281,17 @@ export class ProductsService {
     return { ...updated, stock };
   }
 
+  /**
+   * Handles the update sell price workflow for Products records.
+   */
   async updateSellPrice(id: string, sellPrice: number) {
     await this.findOne(id);
     return this.prisma.product.update({ where: { id }, data: { sellPrice } });
   }
 
+  /**
+   * Removes an existing Products record while preserving business consistency.
+   */
   async remove(id: string) {
     await this.findOne(id);
     await this.prisma.product.update({
@@ -273,6 +303,9 @@ export class ProductsService {
 
   // ---------- Stock helpers ----------
 
+  /**
+   * Handles the calculate stock workflow for Products records.
+   */
   private async calculateStock(productId: string): Promise<number> {
     const rows = await this.prisma.stockLedger.findMany({
       where: { productId },
@@ -287,6 +320,9 @@ export class ProductsService {
     }, 0);
   }
 
+  /**
+   * Handles the calculate stock for products workflow for Products records.
+   */
   private async calculateStockForProducts(productIds: string[]) {
     if (productIds.length === 0) return {} as Record<string, number>;
 
@@ -308,6 +344,9 @@ export class ProductsService {
     return map;
   }
 
+  /**
+   * Handles the set opening stock workflow for Products records.
+   */
   private async setOpeningStock(
     tx: Prisma.TransactionClient,
     productId: string,
@@ -340,7 +379,7 @@ export class ProductsService {
           quantity: delta,
           referenceId: productId,
           note: "Opening stock adjust (+)",
-          createdById: userId ?? null, // ✅ new
+          createdById: userId ?? null, // âœ… new
         },
       });
     } else {
@@ -352,7 +391,7 @@ export class ProductsService {
           quantity: Math.abs(delta),
           referenceId: productId,
           note: "Opening stock adjust (-)",
-          createdById: userId ?? null, // ✅ new
+          createdById: userId ?? null, // âœ… new
         },
       });
     }

@@ -35,6 +35,11 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const userPermissions: string[] = user.permissions || [];
+    const userRoles: string[] = user.roles || [];
+
+    if (userRoles.includes('ADMIN')) {
+      return true;
+    }
     
     const hasPermission = requiredPermissions.some((permission) =>
       userPermissions.includes(permission),

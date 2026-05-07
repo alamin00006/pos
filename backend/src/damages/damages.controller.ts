@@ -5,12 +5,18 @@ import { Permissions } from '../common/decorators';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { CreateDamageDto } from './dto';
 
+/**
+ * Exposes HTTP endpoints for Damages operations.
+ */
 @ApiTags('Damages')
 @ApiBearerAuth()
 @Controller('damages')
 export class DamagesController {
   constructor(private readonly service: DamagesService) {}
 
+  /**
+   * Create damage record.
+   */
   @Post()
   @Permissions('add_damage')
   @ApiOperation({ summary: 'Create damage record' })
@@ -18,6 +24,9 @@ export class DamagesController {
     return this.service.create(dto);
   }
 
+  /**
+   * Get all damages.
+   */
   @Get()
   @Permissions('view_damage')
   @ApiOperation({ summary: 'Get all damages' })
@@ -25,6 +34,9 @@ export class DamagesController {
     return this.service.findAll(query);
   }
 
+  /**
+   * Get damage by ID.
+   */
   @Get(':id')
   @Permissions('view_damage')
   @ApiOperation({ summary: 'Get damage by ID' })
@@ -32,6 +44,9 @@ export class DamagesController {
     return this.service.findOne(id);
   }
 
+  /**
+   * Delete damage.
+   */
   @Delete(':id')
   @Permissions('delete_damage')
   @ApiOperation({ summary: 'Delete damage' })

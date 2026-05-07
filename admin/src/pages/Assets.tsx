@@ -129,7 +129,7 @@ const Assets = () => {
             <div className="border border-border rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[hsl(172,66%,40%)] hover:bg-[hsl(172,66%,40%)]">
+                  <TableRow className="bg-primary hover:bg-primary">
                     <TableHead className="text-white font-semibold">SL</TableHead>
                     <TableHead className="text-white font-semibold">Name</TableHead>
                     <TableHead className="text-white font-semibold">
@@ -271,7 +271,7 @@ const Assets = () => {
         {/* Footer */}
         <footer className="text-center text-sm text-muted-foreground pt-4 border-t border-border">
           Copyright © 2026{" "}
-          <span className="text-primary font-medium">SOFTGHOR</span>. All rights
+          <span className="text-primary font-medium">POS Software</span>. All rights
           reserved.
         </footer>
       </div>

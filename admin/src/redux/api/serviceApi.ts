@@ -1,5 +1,6 @@
-import { Service } from "@/components/services/service.types";
 import { baseApi } from "./baseApi";
+
+type Service = any;
 
 const SERVICE_URL = "/services";
 

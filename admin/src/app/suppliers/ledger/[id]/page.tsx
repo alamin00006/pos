@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,9 +23,9 @@ const money = (n: number) => `৳ ${Number(n || 0).toLocaleString()}`;
 export default function SupplierLedgerPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const supplierId = params.id;
+  const { id: supplierId } = use(params);
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);

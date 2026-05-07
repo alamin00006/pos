@@ -12,12 +12,18 @@ class EstimateQueryDto extends PaginationDto {
   customerId?: string;
 }
 
+/**
+ * Exposes HTTP endpoints for Estimates operations.
+ */
 @ApiTags('Estimates')
 @ApiBearerAuth()
 @Controller('estimates')
 export class EstimatesController {
   constructor(private readonly service: EstimatesService) {}
 
+  /**
+   * Create estimate.
+   */
   @Post()
   @Permissions('add_estimate')
   @ApiOperation({ summary: 'Create estimate' })
@@ -25,6 +31,9 @@ export class EstimatesController {
     return this.service.create(dto);
   }
 
+  /**
+   * Get all estimates.
+   */
   @Get()
   @Permissions('view_estimate')
   @ApiOperation({ summary: 'Get all estimates' })
@@ -32,6 +41,9 @@ export class EstimatesController {
     return this.service.findAll(query);
   }
 
+  /**
+   * Get estimate by ID.
+   */
   @Get(':id')
   @Permissions('view_estimate')
   @ApiOperation({ summary: 'Get estimate by ID' })
@@ -39,6 +51,9 @@ export class EstimatesController {
     return this.service.findOne(id);
   }
 
+  /**
+   * Update estimate.
+   */
   @Patch(':id')
   @Permissions('edit_estimate')
   @ApiOperation({ summary: 'Update estimate' })
@@ -46,6 +61,9 @@ export class EstimatesController {
     return this.service.update(id, dto);
   }
 
+  /**
+   * Delete estimate.
+   */
   @Delete(':id')
   @Permissions('delete_estimate')
   @ApiOperation({ summary: 'Delete estimate' })

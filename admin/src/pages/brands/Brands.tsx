@@ -340,7 +340,7 @@ const Brands = () => {
                               className="h-8 w-8"
                               onClick={() => toast("View is optional")}
                             >
-                              <Eye className="h-4 w-4 text-blue-600" />
+                              <Eye className="h-4 w-4 text-primary" />
                             </Button>
 
                             <DropdownMenu>

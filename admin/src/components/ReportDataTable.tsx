@@ -35,9 +35,9 @@ interface ReportDataTableProps {
 }
 
 const headerColorClasses = {
-  teal: "bg-[hsl(172,66%,40%)]",
-  coral: "bg-[hsl(15,70%,55%)]",
-  dark: "bg-[hsl(215,28%,25%)]",
+  teal: "bg-primary",
+  coral: "bg-primary",
+  dark: "bg-primary",
 };
 
 const ReportDataTable = ({

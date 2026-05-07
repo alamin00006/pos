@@ -14,10 +14,16 @@ import {
 import { CreatePaymentDto } from './dto';
 import { Decimal } from '@prisma/client/runtime/library';
 
+/**
+ * Coordinates Payments business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class PaymentsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Processes payment changes and keeps related ledgers in sync.
+   */
   private normalizePaymentMethod(input?: string): PaymentMethod {
     if (!input) return PaymentMethod.CASH;
     const value = input.toUpperCase();
@@ -41,6 +47,9 @@ export class PaymentsService {
     }
   }
 
+  /**
+   * Creates a new Payments record after validating the request payload.
+   */
   async create(dto: CreatePaymentDto) {
     const paymentDate = dto.date ? new Date(dto.date) : new Date();
     const paymentMethod = this.normalizePaymentMethod(dto.paymentMethod);
@@ -218,6 +227,9 @@ export class PaymentsService {
     });
   }
 
+  /**
+   * Handles the record bank transaction workflow for Payments records.
+   */
   private async recordBankTransaction(
     tx: any,
     bankAccountId: string,
@@ -254,6 +266,9 @@ export class PaymentsService {
     });
   }
 
+  /**
+   * Retrieves filtered Payments records for API consumers.
+   */
   async findAll(query: PaginationDto & { saleId?: string; purchaseId?: string; startDate?: string; endDate?: string }) {
     const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc', saleId, purchaseId, startDate, endDate } = query;
     const where: any = { deletedAt: null };
@@ -280,6 +295,9 @@ export class PaymentsService {
     return { data, meta: getPaginationMeta(total, page, limit) };
   }
 
+  /**
+   * Retrieves a single Payments record by identifier.
+   */
   async findOne(id: string) {
     const payment = await this.prisma.payment.findFirst({
       where: { id, deletedAt: null },
@@ -289,6 +307,9 @@ export class PaymentsService {
     return payment;
   }
 
+  /**
+   * Removes an existing Payments record while preserving business consistency.
+   */
   async remove(id: string) {
     await this.findOne(id);
     return this.prisma.payment.update({ where: { id }, data: { deletedAt: new Date() } });

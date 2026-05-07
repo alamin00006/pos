@@ -1,6 +1,6 @@
-# SoftGhor POS Backend API
+# POS Software Backend API
 
-Production-ready NestJS backend for SoftGhor POS Admin Panel.
+Production-ready NestJS backend for POS Software Admin Panel.
 
 ## Tech Stack
 
@@ -72,7 +72,7 @@ Once running, access Swagger docs at: `http://localhost:3000/docs`
 
 ## Default Admin Credentials
 
-- **Email**: admin@softghor.com
+- **Email**: pos@admin.com
 - **Password**: admin
 
 ## Project Structure

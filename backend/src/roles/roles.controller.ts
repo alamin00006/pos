@@ -18,24 +18,36 @@ import { AssignPermissionsDto } from './dto/assign-permissions.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { Permissions } from '../common/decorators';
 
+/**
+ * Exposes HTTP endpoints for Roles operations.
+ */
 @ApiTags('Roles')
 @ApiBearerAuth('access-token')
 @Controller('roles')
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
+  /**
+   * Get all roles.
+   */
   @Get()
   @ApiOperation({ summary: 'Get all roles' })
   async findAll(@Query() query: PaginationDto) {
     return this.rolesService.findAll(query);
   }
 
+  /**
+   * Get role by ID with permissions.
+   */
   @Get(':id')
   @ApiOperation({ summary: 'Get role by ID with permissions' })
   async findOne(@Param('id') id: string) {
     return this.rolesService.findOne(id);
   }
 
+  /**
+   * Create new role.
+   */
   @Post()
   @Permissions('add_user')
   @ApiOperation({ summary: 'Create new role' })
@@ -43,6 +55,9 @@ export class RolesController {
     return this.rolesService.create(createRoleDto);
   }
 
+  /**
+   * Update role.
+   */
   @Put(':id')
   @Permissions('edit_user')
   @ApiOperation({ summary: 'Update role' })
@@ -50,6 +65,9 @@ export class RolesController {
     return this.rolesService.update(id, updateRoleDto);
   }
 
+  /**
+   * Delete role (soft delete).
+   */
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @Permissions('delete_user')
@@ -58,6 +76,9 @@ export class RolesController {
     return this.rolesService.remove(id);
   }
 
+  /**
+   * Assign permissions to role.
+   */
   @Post(':id/permissions')
   @Permissions('edit_user')
   @ApiOperation({ summary: 'Assign permissions to role' })
@@ -68,6 +89,9 @@ export class RolesController {
     return this.rolesService.assignPermissions(id, assignPermissionsDto.permissionIds);
   }
 
+  /**
+   * Update role permissions (replace all).
+   */
   @Put(':id/permissions')
   @Permissions('edit_user')
   @ApiOperation({ summary: 'Update role permissions (replace all)' })

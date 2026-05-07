@@ -5,10 +5,16 @@ import { StockQueryDto } from './dto/stock-query.dto';
 import { paginate, buildPaginationQuery, buildOrderByQuery } from '../common/utils/pagination.util';
 import { StockLedgerType, StockLedgerSource } from '@prisma/client';
 
+/**
+ * Coordinates Stock business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class StockService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Builds the requested Stock report from current business data.
+   */
   async getStockReport(query: StockQueryDto, branchId?: string) {
     const { page, limit, search, sortBy, sortOrder, categoryId } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -57,6 +63,9 @@ export class StockService {
     return paginate(productsWithStock, total, page!, limit!);
   }
 
+  /**
+   * Handles the get low stock workflow for Stock records.
+   */
   async getLowStock(query: StockQueryDto, branchId?: string) {
     const { page, limit } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -87,6 +96,9 @@ export class StockService {
     return paginate(paginatedProducts, lowStockProducts.length, page!, limit!);
   }
 
+  /**
+   * Handles the get product ledger workflow for Stock records.
+   */
   async getProductLedger(productId: string, query: StockQueryDto, branchId?: string) {
     const { page, limit } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -121,6 +133,9 @@ export class StockService {
     return paginate(ledgerWithBalance, total, page!, limit!);
   }
 
+  /**
+   * Handles the adjust stock workflow for Stock records.
+   */
   async adjustStock(adjustStockDto: AdjustStockDto, branchId?: string) {
     const { productId, quantity, type, note } = adjustStockDto;
 
@@ -147,6 +162,9 @@ export class StockService {
     return { message: 'Stock adjusted successfully', stock: newStock };
   }
 
+  /**
+   * Handles the set opening stock workflow for Stock records.
+   */
   async setOpeningStock(productId: string, quantity: number, note?: string, branchId?: string) {
     const product = await this.prisma.product.findFirst({
       where: { id: productId, ...this.prisma.notDeleted() },
@@ -171,6 +189,9 @@ export class StockService {
   }
 
   // Used by other services
+  /**
+   * Creates a new Stock record after validating the request payload.
+   */
   async addStock(
     productId: string,
     quantity: number,
@@ -190,6 +211,9 @@ export class StockService {
     });
   }
 
+  /**
+   * Handles the deduct stock workflow for Stock records.
+   */
   async deductStock(
     productId: string,
     quantity: number,
@@ -209,6 +233,9 @@ export class StockService {
     });
   }
 
+  /**
+   * Handles the calculate stock workflow for Stock records.
+   */
   private async calculateStock(productId: string, branchId?: string): Promise<number> {
     const rows = await this.prisma.stockLedger.findMany({
       where: { productId, ...(branchId ? { branchId } : {}) },

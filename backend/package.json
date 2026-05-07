@@ -1,8 +1,8 @@
 {
-  "name": "softghor-pos-backend",
+  "name": "pos-software-backend",
   "version": "1.0.0",
-  "description": "SoftGhor POS Admin Panel Backend API",
-  "author": "SoftGhor",
+  "description": "POS Software Admin Panel Backend API",
+  "author": "POS Software",
   "private": true,
   "license": "MIT",
   "scripts": {

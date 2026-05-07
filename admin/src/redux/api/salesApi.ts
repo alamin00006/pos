@@ -79,7 +79,7 @@ export const salesApi = baseApi.injectEndpoints({
       query: ({ id, data }) => ({
         url: `${SALES_URL}/${id}`,
         method: "PUT",
-        body: data,
+        data,
       }),
       invalidatesTags: ["sales"],
     }),
@@ -102,7 +102,7 @@ export const salesApi = baseApi.injectEndpoints({
       query: ({ id, data }) => ({
         url: `${SALES_URL}/${id}/payment`,
         method: "POST",
-        body: data,
+        data,
       }),
       invalidatesTags: ["sales"],
     }),
@@ -125,7 +125,7 @@ export const salesApi = baseApi.injectEndpoints({
       query: ({ id, data }) => ({
         url: `${SALES_URL}/${id}/refund`,
         method: "POST",
-        body: data,
+        data,
       }),
       invalidatesTags: ["sales"],
     }),

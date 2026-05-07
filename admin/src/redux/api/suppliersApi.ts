@@ -107,7 +107,7 @@ export const suppliersApi = baseApi.injectEndpoints({
     }),
 
     /* =======================
-       DELETE SUPPLIER (SOFT)
+       DELETE SUPPLIER
     ======================== */
     deleteSupplier: builder.mutation<
       { success: boolean; message: string },

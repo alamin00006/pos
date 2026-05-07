@@ -4,12 +4,18 @@ import { ReportsService } from './reports.service';
 import { DateRangeQueryDto, TopItemsQueryDto, CategoryReportQueryDto, CustomerReportQueryDto, SupplierReportQueryDto } from './dto/report-query.dto';
 import { Permissions } from '../common/decorators';
 
+/**
+ * Exposes HTTP endpoints for Reports operations.
+ */
 @ApiTags('Reports')
 @ApiBearerAuth()
 @Controller('reports')
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
+  /**
+   * Get today\.
+   */
   @Get('today')
   @Permissions('daily_report')
   @ApiOperation({ summary: 'Get today\'s report' })
@@ -17,6 +23,9 @@ export class ReportsController {
     return this.reportsService.getTodayReport();
   }
 
+  /**
+   * Get daily report with date range.
+   */
   @Get('daily')
   @Permissions('daily_report')
   @ApiOperation({ summary: 'Get daily report with date range' })
@@ -24,6 +33,9 @@ export class ReportsController {
     return this.reportsService.getDailyReport(query);
   }
 
+  /**
+   * Get current month report.
+   */
   @Get('current-month')
   @Permissions('current_month_report')
   @ApiOperation({ summary: 'Get current month report' })
@@ -31,6 +43,9 @@ export class ReportsController {
     return this.reportsService.getCurrentMonthReport();
   }
 
+  /**
+   * Get profit/loss report.
+   */
   @Get('profit-loss')
   @Permissions('profit_loss_report')
   @ApiOperation({ summary: 'Get profit/loss report' })
@@ -38,6 +53,9 @@ export class ReportsController {
     return this.reportsService.getProfitLossReport(query);
   }
 
+  /**
+   * Get top selling products report.
+   */
   @Get('top-products')
   @Permissions('top_product_report')
   @ApiOperation({ summary: 'Get top selling products report' })
@@ -45,6 +63,9 @@ export class ReportsController {
     return this.reportsService.getTopProductsReport(query);
   }
 
+  /**
+   * Get top customers report.
+   */
   @Get('top-customers')
   @Permissions('top_customer_report')
   @ApiOperation({ summary: 'Get top customers report' })
@@ -52,6 +73,9 @@ export class ReportsController {
     return this.reportsService.getTopCustomersReport(query);
   }
 
+  /**
+   * Get category-wise sales/purchase report.
+   */
   @Get('category-wise')
   @Permissions('category_wise_report')
   @ApiOperation({ summary: 'Get category-wise sales/purchase report' })
@@ -59,6 +83,9 @@ export class ReportsController {
     return this.reportsService.getCategoryWiseReport(query);
   }
 
+  /**
+   * Get sales report.
+   */
   @Get('sales')
   @Permissions('sales_report')
   @ApiOperation({ summary: 'Get sales report' })
@@ -66,6 +93,9 @@ export class ReportsController {
     return this.reportsService.getSalesReport(query);
   }
 
+  /**
+   * Get purchases report.
+   */
   @Get('purchases')
   @Permissions('purchase_report')
   @ApiOperation({ summary: 'Get purchases report' })
@@ -73,6 +103,9 @@ export class ReportsController {
     return this.reportsService.getPurchaseReport(query);
   }
 
+  /**
+   * Get customer due report.
+   */
   @Get('customer-due')
   @Permissions('customer_due_report')
   @ApiOperation({ summary: 'Get customer due report' })
@@ -80,6 +113,9 @@ export class ReportsController {
     return this.reportsService.getCustomerDueReport(query);
   }
 
+  /**
+   * Get supplier due report.
+   */
   @Get('supplier-due')
   @Permissions('supplier_due_report')
   @ApiOperation({ summary: 'Get supplier due report' })
@@ -87,6 +123,9 @@ export class ReportsController {
     return this.reportsService.getSupplierDueReport(query);
   }
 
+  /**
+   * Get low stock report.
+   */
   @Get('low-stock')
   @Permissions('low_stock_report')
   @ApiOperation({ summary: 'Get low stock report' })
@@ -94,6 +133,9 @@ export class ReportsController {
     return this.reportsService.getLowStockReport();
   }
 
+  /**
+   * Get overall summary report.
+   */
   @Get('summary')
   @Permissions('summary_report')
   @ApiOperation({ summary: 'Get overall summary report' })

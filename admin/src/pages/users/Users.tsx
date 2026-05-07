@@ -104,7 +104,6 @@ const Users = () => {
 
       setActiveTab("users");
     } catch (err: any) {
-      console.log(err);
       toast.error(err?.data?.errors?.join(", ") || "Failed to create user");
     }
   };

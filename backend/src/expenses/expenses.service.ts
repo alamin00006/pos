@@ -7,10 +7,16 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { addCashBookEntry, recordBankTransaction } from '../common/utils/pos-accounting.util';
 import { CreateExpenseDto, UpdateExpenseDto } from './dto';
 
+/**
+ * Coordinates Expenses business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class ExpensesService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Processes payment changes and keeps related ledgers in sync.
+   */
   private normalizePaymentMethod(input?: string): PaymentMethod {
     if (!input) return PaymentMethod.CASH;
     const value = input.toUpperCase();
@@ -20,6 +26,9 @@ export class ExpensesService {
     return PaymentMethod.CASH;
   }
 
+  /**
+   * Creates a new Expenses record after validating the request payload.
+   */
   async create(dto: CreateExpenseDto) {
     if (!dto.categoryId) {
       throw new BadRequestException('Expense category is required');
@@ -67,6 +76,9 @@ export class ExpensesService {
     });
   }
 
+  /**
+   * Retrieves filtered Expenses records for API consumers.
+   */
   async findAll(query: PaginationDto & { expenseCategoryId?: string; categoryId?: string; startDate?: string; endDate?: string }) {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', expenseCategoryId, categoryId, startDate, endDate } = query;
     const where: any = { deletedAt: null };
@@ -93,6 +105,9 @@ export class ExpensesService {
     return { data, meta: getPaginationMeta(total, page, limit) };
   }
 
+  /**
+   * Retrieves a single Expenses record by identifier.
+   */
   async findOne(id: string) {
     const expense = await this.prisma.expense.findFirst({
       where: { id, deletedAt: null },
@@ -102,6 +117,9 @@ export class ExpensesService {
     return expense;
   }
 
+  /**
+   * Updates an existing Expenses record with the provided changes.
+   */
   async update(id: string, dto: UpdateExpenseDto) {
     await this.findOne(id);
     const data: any = { ...dto };
@@ -127,6 +145,9 @@ export class ExpensesService {
     });
   }
 
+  /**
+   * Removes an existing Expenses record while preserving business consistency.
+   */
   async remove(id: string) {
     return this.prisma.$transaction(async (tx) => {
       const expense = await tx.expense.findFirst({ where: { id, deletedAt: null } });

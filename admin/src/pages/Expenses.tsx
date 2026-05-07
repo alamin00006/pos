@@ -20,609 +20,145 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from "@/components/ui/card";
-import { Save, Eye, Edit, Trash2, MoreHorizontal, Plus, List } from "lucide-react";
+import { Save, Trash2, Plus, List } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import {
+  useCreateExpenseCategoryMutation,
+  useCreateExpenseMutation,
+  useDeleteExpenseCategoryMutation,
+  useDeleteExpenseMutation,
+  useGetExpenseCategoriesQuery,
+  useGetExpensesQuery,
+} from "@/redux/api/expensesApi";
 
-interface Expense {
-  id: number;
-  name: string;
-  amount: number;
-  date: string;
-  category: string;
-  transactionAccount: string;
-  note: string;
-}
-
-interface ExpenseCategory {
-  id: number;
-  name: string;
-  description: string;
-  status: "Active" | "Inactive";
-}
+const money = (value: number) => `Tk ${Number(value || 0).toLocaleString()}`;
 
 const Expenses = () => {
   const [activeTab, setActiveTab] = useState("expenses");
-  
-  // Expense form state
-  const [expenseForm, setExpenseForm] = useState({
-    name: "",
-    amount: "",
-    date: new Date().toISOString().split("T")[0],
-    category: "",
-    transactionAccount: "CASH",
-    note: "",
-  });
+  const [expensePage, setExpensePage] = useState(1);
+  const [categoryPage, setCategoryPage] = useState(1);
+  const [expenseFilters, setExpenseFilters] = useState({ search: "", categoryId: "all", dateFrom: "", dateTo: "" });
+  const [expenseQuery, setExpenseQuery] = useState<any>({ page: 1, limit: 10 });
+  const [expenseForm, setExpenseForm] = useState({ title: "", amount: "", date: new Date().toISOString().split("T")[0], categoryId: "", paymentMethod: "cash", description: "" });
+  const [categoryForm, setCategoryForm] = useState({ name: "", description: "" });
 
-  // Category form state
-  const [categoryForm, setCategoryForm] = useState({
-    name: "",
-    description: "",
-  });
+  const { data: expensesRes, isLoading: expensesLoading, isFetching: expensesFetching } = useGetExpensesQuery(expenseQuery);
+  const { data: categoriesRes, isLoading: categoriesLoading } = useGetExpenseCategoriesQuery({ page: categoryPage, limit: 10 });
+  const [createExpense, { isLoading: savingExpense }] = useCreateExpenseMutation();
+  const [deleteExpense, { isLoading: deletingExpense }] = useDeleteExpenseMutation();
+  const [createCategory, { isLoading: savingCategory }] = useCreateExpenseCategoryMutation();
+  const [deleteCategory, { isLoading: deletingCategory }] = useDeleteExpenseCategoryMutation();
 
-  // Mock data
-  const [expenses, setExpenses] = useState<Expense[]>([
-    { id: 1, name: "Office Rent", amount: 15000, date: "2026-01-15", category: "Rent", transactionAccount: "BANK", note: "Monthly rent" },
-    { id: 2, name: "Internet Bill", amount: 2500, date: "2026-01-20", category: "Utilities", transactionAccount: "CASH", note: "" },
-    { id: 3, name: "Office Supplies", amount: 3200, date: "2026-01-25", category: "Supplies", transactionAccount: "CASH", note: "Stationery items" },
-  ]);
+  const expenses = expensesRes?.data ?? [];
+  const expenseMeta = expensesRes?.meta;
+  const categories = categoriesRes?.data ?? [];
+  const categoryMeta = categoriesRes?.meta;
 
-  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([
-    { id: 1, name: "Rent", description: "Monthly rent expenses", status: "Active" },
-    { id: 2, name: "Utilities", description: "Electricity, water, internet bills", status: "Active" },
-    { id: 3, name: "Supplies", description: "Office supplies and stationery", status: "Active" },
-    { id: 4, name: "Transportation", description: "Travel and transport costs", status: "Active" },
-  ]);
-
-  // Filters
-  const [expenseFilters, setExpenseFilters] = useState({
-    name: "",
-    category: "",
-    dateFrom: "",
-    dateTo: "",
-  });
-
-  const [categoryFilters, setCategoryFilters] = useState({
-    name: "",
-  });
-
-  // Pagination
-  const [currentExpensePage, setCurrentExpensePage] = useState(1);
-  const [currentCategoryPage, setCurrentCategoryPage] = useState(1);
-  const itemsPerPage = 10;
-
-  const handleExpenseFormChange = (field: string, value: string) => {
-    setExpenseForm((prev) => ({ ...prev, [field]: value }));
+  const filterExpenses = () => {
+    setExpensePage(1);
+    setExpenseQuery({
+      page: 1,
+      limit: 10,
+      search: expenseFilters.search || undefined,
+      categoryId: expenseFilters.categoryId !== "all" ? expenseFilters.categoryId : undefined,
+      startDate: expenseFilters.dateFrom || undefined,
+      endDate: expenseFilters.dateTo || undefined,
+    });
   };
 
-  const handleCategoryFormChange = (field: string, value: string) => {
-    setCategoryForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSaveExpense = () => {
-    if (!expenseForm.name || !expenseForm.amount || !expenseForm.category) {
-      toast({
-        title: "Error",
-        description: "Please fill all required fields",
-        variant: "destructive",
-      });
+  const saveExpense = async () => {
+    if (!expenseForm.title || !expenseForm.amount || !expenseForm.categoryId) {
+      toast({ title: "Error", description: "Please fill all required fields", variant: "destructive" });
       return;
     }
-
-    const newExpense: Expense = {
-      id: expenses.length + 1,
-      name: expenseForm.name,
-      amount: parseFloat(expenseForm.amount),
-      date: expenseForm.date,
-      category: expenseForm.category,
-      transactionAccount: expenseForm.transactionAccount,
-      note: expenseForm.note,
-    };
-
-    setExpenses([...expenses, newExpense]);
-    setExpenseForm({
-      name: "",
-      amount: "",
-      date: new Date().toISOString().split("T")[0],
-      category: "",
-      transactionAccount: "CASH",
-      note: "",
-    });
-    toast({
-      title: "Success",
-      description: "Expense added successfully",
-    });
-    setActiveTab("expenses");
+    try {
+      await createExpense({
+        title: expenseForm.title,
+        amount: Number(expenseForm.amount),
+        categoryId: expenseForm.categoryId,
+        date: expenseForm.date || undefined,
+        paymentMethod: expenseForm.paymentMethod,
+        description: expenseForm.description || undefined,
+      }).unwrap();
+      setExpenseForm({ title: "", amount: "", date: new Date().toISOString().split("T")[0], categoryId: "", paymentMethod: "cash", description: "" });
+      setActiveTab("expenses");
+      toast({ title: "Success", description: "Expense added successfully" });
+    } catch (error: any) {
+      toast({ title: "Save failed", description: error?.data?.message || "Could not save expense", variant: "destructive" });
+    }
   };
 
-  const handleSaveCategory = () => {
+  const saveCategory = async () => {
     if (!categoryForm.name) {
-      toast({
-        title: "Error",
-        description: "Please enter category name",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Please enter category name", variant: "destructive" });
       return;
     }
-
-    const newCategory: ExpenseCategory = {
-      id: expenseCategories.length + 1,
-      name: categoryForm.name,
-      description: categoryForm.description,
-      status: "Active",
-    };
-
-    setExpenseCategories([...expenseCategories, newCategory]);
-    setCategoryForm({ name: "", description: "" });
-    toast({
-      title: "Success",
-      description: "Expense category added successfully",
-    });
+    try {
+      await createCategory(categoryForm).unwrap();
+      setCategoryForm({ name: "", description: "" });
+      toast({ title: "Success", description: "Expense category added successfully" });
+    } catch (error: any) {
+      toast({ title: "Save failed", description: error?.data?.message || "Could not save category", variant: "destructive" });
+    }
   };
 
-  const handleDeleteExpense = (id: number) => {
-    setExpenses(expenses.filter((e) => e.id !== id));
-    toast({
-      title: "Deleted",
-      description: "Expense deleted successfully",
-    });
+  const removeExpense = async (id: string) => {
+    if (!confirm("Delete this expense?")) return;
+    await deleteExpense(id).unwrap();
+    toast({ title: "Deleted", description: "Expense deleted successfully" });
   };
 
-  const handleDeleteCategory = (id: number) => {
-    setExpenseCategories(expenseCategories.filter((c) => c.id !== id));
-    toast({
-      title: "Deleted",
-      description: "Expense category deleted successfully",
-    });
+  const removeCategory = async (id: string) => {
+    if (!confirm("Delete this category?")) return;
+    await deleteCategory(id).unwrap();
+    toast({ title: "Deleted", description: "Expense category deleted successfully" });
   };
-
-  // Filter expenses
-  const filteredExpenses = expenses.filter((expense) => {
-    const matchesName = expense.name.toLowerCase().includes(expenseFilters.name.toLowerCase());
-    const matchesCategory = !expenseFilters.category || expense.category === expenseFilters.category;
-    return matchesName && matchesCategory;
-  });
-
-  // Filter categories
-  const filteredCategories = expenseCategories.filter((cat) =>
-    cat.name.toLowerCase().includes(categoryFilters.name.toLowerCase())
-  );
-
-  // Pagination logic
-  const paginatedExpenses = filteredExpenses.slice(
-    (currentExpensePage - 1) * itemsPerPage,
-    currentExpensePage * itemsPerPage
-  );
-
-  const paginatedCategories = filteredCategories.slice(
-    (currentCategoryPage - 1) * itemsPerPage,
-    currentCategoryPage * itemsPerPage
-  );
-
-  const totalExpensePages = Math.ceil(filteredExpenses.length / itemsPerPage);
-  const totalCategoryPages = Math.ceil(filteredCategories.length / itemsPerPage);
 
   return (
     <DashboardLayout title="Expense">
       <div className="space-y-6">
+        <section className="rounded-lg border border-primary/15 bg-white p-6 shadow-sm">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-wide text-primary">
+              Expense control
+            </p>
+            <h1 className="mt-2 text-2xl font-semibold text-gray-950">
+              Expenses
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Record operating expenses, manage categories, and review spending history.
+            </p>
+          </div>
+        </section>
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start h-auto p-0 mb-6">
-            <TabsTrigger
-              value="expenses"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 py-3"
-            >
-              <List className="w-4 h-4 mr-2" />
-              EXPENSES
-            </TabsTrigger>
-            <TabsTrigger
-              value="add"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 py-3"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              ADD EXPENSE
-            </TabsTrigger>
-            <TabsTrigger
-              value="categories"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 py-3"
-            >
-              EXPENSE CATEGORIES
-            </TabsTrigger>
+            <TabsTrigger value="expenses" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 py-3"><List className="w-4 h-4 mr-2" />EXPENSES</TabsTrigger>
+            <TabsTrigger value="add" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 py-3"><Plus className="w-4 h-4 mr-2" />ADD EXPENSE</TabsTrigger>
+            <TabsTrigger value="categories" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 py-3">EXPENSE CATEGORIES</TabsTrigger>
           </TabsList>
 
-          {/* Expenses List Tab */}
           <TabsContent value="expenses" className="mt-0">
-            <Card>
-              <CardContent className="p-6">
-                {/* Filters */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div>
-                    <Label>Expense Name</Label>
-                    <Input
-                      placeholder="Search by name"
-                      value={expenseFilters.name}
-                      onChange={(e) =>
-                        setExpenseFilters({ ...expenseFilters, name: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>Category</Label>
-                    <Select
-                      value={expenseFilters.category}
-                      onValueChange={(value) =>
-                        setExpenseFilters({ ...expenseFilters, category: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="All Categories" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        {expenseCategories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.name}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Date From</Label>
-                    <Input
-                      type="date"
-                      value={expenseFilters.dateFrom}
-                      onChange={(e) =>
-                        setExpenseFilters({ ...expenseFilters, dateFrom: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>Date To</Label>
-                    <Input
-                      type="date"
-                      value={expenseFilters.dateTo}
-                      onChange={(e) =>
-                        setExpenseFilters({ ...expenseFilters, dateTo: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-
-                {/* Table */}
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="w-12">SL</TableHead>
-                        <TableHead>Expense Name</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Account</TableHead>
-                        <TableHead>Note</TableHead>
-                        <TableHead className="w-24">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedExpenses.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                            No expenses found
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        paginatedExpenses.map((expense, index) => (
-                          <TableRow key={expense.id}>
-                            <TableCell>{(currentExpensePage - 1) * itemsPerPage + index + 1}</TableCell>
-                            <TableCell className="font-medium">{expense.name}</TableCell>
-                            <TableCell>৳{expense.amount.toLocaleString()}</TableCell>
-                            <TableCell>{expense.date}</TableCell>
-                            <TableCell>{expense.category}</TableCell>
-                            <TableCell>{expense.transactionAccount}</TableCell>
-                            <TableCell className="max-w-[150px] truncate">{expense.note || "-"}</TableCell>
-                            <TableCell>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>
-                                    <Eye className="w-4 h-4 mr-2" />
-                                    View
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => handleDeleteExpense(expense.id)}
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                {/* Pagination */}
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Showing {(currentExpensePage - 1) * itemsPerPage + 1} to{" "}
-                    {Math.min(currentExpensePage * itemsPerPage, filteredExpenses.length)} of{" "}
-                    {filteredExpenses.length} entries
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentExpensePage((p) => Math.max(1, p - 1))}
-                      disabled={currentExpensePage === 1}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentExpensePage((p) => Math.min(totalExpensePages, p + 1))}
-                      disabled={currentExpensePage === totalExpensePages || totalExpensePages === 0}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <Card><CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                <div><Label>Expense Name</Label><Input value={expenseFilters.search} onChange={(e) => setExpenseFilters({ ...expenseFilters, search: e.target.value })} placeholder="Search by name" /></div>
+                <div><Label>Category</Label><Select value={expenseFilters.categoryId} onValueChange={(value) => setExpenseFilters({ ...expenseFilters, categoryId: value })}><SelectTrigger><SelectValue placeholder="All Categories" /></SelectTrigger><SelectContent><SelectItem value="all">All Categories</SelectItem>{categories.map((cat: any) => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}</SelectContent></Select></div>
+                <div><Label>Date From</Label><Input type="date" value={expenseFilters.dateFrom} onChange={(e) => setExpenseFilters({ ...expenseFilters, dateFrom: e.target.value })} /></div>
+                <div><Label>Date To</Label><Input type="date" value={expenseFilters.dateTo} onChange={(e) => setExpenseFilters({ ...expenseFilters, dateTo: e.target.value })} /></div>
+                <div className="flex items-end"><Button onClick={filterExpenses}>Filter</Button></div>
+              </div>
+              <div className="border rounded-lg overflow-hidden"><Table><TableHeader><TableRow className="bg-muted/50"><TableHead>SL</TableHead><TableHead>Expense Name</TableHead><TableHead>Amount</TableHead><TableHead>Date</TableHead><TableHead>Category</TableHead><TableHead>Method</TableHead><TableHead>Note</TableHead><TableHead>Action</TableHead></TableRow></TableHeader><TableBody>{expensesLoading ? <TableRow><TableCell colSpan={8} className="py-10 text-center">Loading...</TableCell></TableRow> : expenses.length === 0 ? <TableRow><TableCell colSpan={8} className="py-10 text-center">No expenses found</TableCell></TableRow> : expenses.map((expense: any, index: number) => <TableRow key={expense.id}><TableCell>{(expensePage - 1) * 10 + index + 1}</TableCell><TableCell>{expense.title || expense.name}</TableCell><TableCell>{money(expense.amount)}</TableCell><TableCell>{expense.date ? new Date(expense.date).toLocaleDateString() : "-"}</TableCell><TableCell>{expense.category?.name || expense.categoryName || "-"}</TableCell><TableCell>{expense.paymentMethod || "-"}</TableCell><TableCell className="max-w-[160px] truncate">{expense.description || expense.note || "-"}</TableCell><TableCell><Button variant="ghost" size="icon" disabled={deletingExpense} onClick={() => removeExpense(expense.id)}><Trash2 className="w-4 h-4" /></Button></TableCell></TableRow>)}</TableBody></Table></div>
+              <div className="flex items-center justify-between mt-4"><p className="text-sm text-muted-foreground">Page {expenseMeta?.page ?? expensePage} of {expenseMeta?.totalPages ?? 1}{expensesFetching ? " - Updating..." : ""}</p><div className="flex gap-2"><Button variant="outline" size="sm" disabled={expensePage <= 1} onClick={() => { const next = Math.max(1, expensePage - 1); setExpensePage(next); setExpenseQuery((prev: any) => ({ ...prev, page: next })); }}>Previous</Button><Button variant="outline" size="sm" disabled={expenseMeta ? expensePage >= expenseMeta.totalPages : true} onClick={() => { const next = expensePage + 1; setExpensePage(next); setExpenseQuery((prev: any) => ({ ...prev, page: next })); }}>Next</Button></div></div>
+            </CardContent></Card>
           </TabsContent>
 
-          {/* Add Expense Tab */}
           <TabsContent value="add" className="mt-0">
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-lg font-medium mb-6">New Expense</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <Label>
-                      Expense Name<span className="text-destructive">*</span>:
-                    </Label>
-                    <Input
-                      placeholder="Expense Name"
-                      value={expenseForm.name}
-                      onChange={(e) => handleExpenseFormChange("name", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>
-                      Expense Amount<span className="text-destructive">*</span>:
-                    </Label>
-                    <Input
-                      type="number"
-                      placeholder="Enter Expense Amount"
-                      value={expenseForm.amount}
-                      onChange={(e) => handleExpenseFormChange("amount", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>
-                      Expense Date<span className="text-destructive">*</span>:
-                    </Label>
-                    <Input
-                      type="date"
-                      value={expenseForm.date}
-                      onChange={(e) => handleExpenseFormChange("date", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>
-                      Expense Category<span className="text-destructive">*</span>:
-                    </Label>
-                    <Select
-                      value={expenseForm.category}
-                      onValueChange={(value) => handleExpenseFormChange("category", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {expenseCategories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.name}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Transaction Account:</Label>
-                    <Select
-                      value={expenseForm.transactionAccount}
-                      onValueChange={(value) => handleExpenseFormChange("transactionAccount", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CASH">CASH</SelectItem>
-                        <SelectItem value="BANK">BANK</SelectItem>
-                        <SelectItem value="MOBILE_BANKING">MOBILE BANKING</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Expense Note:</Label>
-                    <Textarea
-                      placeholder="Enter Optional Note"
-                      value={expenseForm.note}
-                      onChange={(e) => handleExpenseFormChange("note", e.target.value)}
-                      className="min-h-[40px]"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <Button onClick={handleSaveExpense} className="gap-2">
-                    <Save className="w-4 h-4" />
-                    Save
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <Card><CardContent className="p-6"><h3 className="text-lg font-medium mb-6">New Expense</h3><div className="grid grid-cols-1 md:grid-cols-3 gap-6"><div><Label>Expense Name*</Label><Input value={expenseForm.title} onChange={(e) => setExpenseForm({ ...expenseForm, title: e.target.value })} /></div><div><Label>Amount*</Label><Input type="number" value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} /></div><div><Label>Date</Label><Input type="date" value={expenseForm.date} onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })} /></div><div><Label>Category*</Label><Select value={expenseForm.categoryId} onValueChange={(value) => setExpenseForm({ ...expenseForm, categoryId: value })}><SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger><SelectContent>{categories.map((cat: any) => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}</SelectContent></Select></div><div><Label>Payment Method</Label><Select value={expenseForm.paymentMethod} onValueChange={(value) => setExpenseForm({ ...expenseForm, paymentMethod: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="cash">Cash</SelectItem><SelectItem value="bank">Bank</SelectItem><SelectItem value="card">Card</SelectItem><SelectItem value="mobile_money">Mobile Money</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent></Select></div><div><Label>Note</Label><Textarea value={expenseForm.description} onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })} /></div></div><div className="mt-6"><Button onClick={saveExpense} disabled={savingExpense} className="gap-2"><Save className="w-4 h-4" />Save</Button></div></CardContent></Card>
           </TabsContent>
 
-          {/* Expense Categories Tab */}
           <TabsContent value="categories" className="mt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Add Category Form */}
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-medium mb-4">Add Expense Category</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>
-                        Category Name<span className="text-destructive">*</span>:
-                      </Label>
-                      <Input
-                        placeholder="Category Name"
-                        value={categoryForm.name}
-                        onChange={(e) => handleCategoryFormChange("name", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label>Description:</Label>
-                      <Textarea
-                        placeholder="Enter Description"
-                        value={categoryForm.description}
-                        onChange={(e) => handleCategoryFormChange("description", e.target.value)}
-                      />
-                    </div>
-                    <Button onClick={handleSaveCategory} className="w-full gap-2">
-                      <Save className="w-4 h-4" />
-                      Save Category
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Categories List */}
-              <Card className="lg:col-span-2">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium">Expense Categories</h3>
-                    <Input
-                      placeholder="Search category..."
-                      className="w-64"
-                      value={categoryFilters.name}
-                      onChange={(e) => setCategoryFilters({ name: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead className="w-12">SL</TableHead>
-                          <TableHead>Category Name</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="w-24">Action</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {paginatedCategories.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                              No categories found
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          paginatedCategories.map((cat, index) => (
-                            <TableRow key={cat.id}>
-                              <TableCell>{(currentCategoryPage - 1) * itemsPerPage + index + 1}</TableCell>
-                              <TableCell className="font-medium">{cat.name}</TableCell>
-                              <TableCell>{cat.description || "-"}</TableCell>
-                              <TableCell>
-                                <span
-                                  className={`px-2 py-1 rounded-full text-xs ${
-                                    cat.status === "Active"
-                                      ? "bg-green-100 text-green-700"
-                                      : "bg-red-100 text-red-700"
-                                  }`}
-                                >
-                                  {cat.status}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                      <MoreHorizontal className="w-4 h-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem>
-                                      <Edit className="w-4 h-4 mr-2" />
-                                      Edit
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      className="text-destructive"
-                                      onClick={() => handleDeleteCategory(cat.id)}
-                                    >
-                                      <Trash2 className="w-4 h-4 mr-2" />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {/* Pagination */}
-                  <div className="flex items-center justify-between mt-4">
-                    <p className="text-sm text-muted-foreground">
-                      Showing {(currentCategoryPage - 1) * itemsPerPage + 1} to{" "}
-                      {Math.min(currentCategoryPage * itemsPerPage, filteredCategories.length)} of{" "}
-                      {filteredCategories.length} entries
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentCategoryPage((p) => Math.max(1, p - 1))}
-                        disabled={currentCategoryPage === 1}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentCategoryPage((p) => Math.min(totalCategoryPages, p + 1))}
-                        disabled={currentCategoryPage === totalCategoryPages || totalCategoryPages === 0}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"><Card><CardContent className="p-6"><h3 className="text-lg font-medium mb-4">Add Expense Category</h3><div className="space-y-4"><div><Label>Category Name*</Label><Input value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} /></div><div><Label>Description</Label><Textarea value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} /></div><Button onClick={saveCategory} disabled={savingCategory} className="w-full gap-2"><Save className="w-4 h-4" />Save Category</Button></div></CardContent></Card><Card className="lg:col-span-2"><CardContent className="p-6"><h3 className="text-lg font-medium mb-4">Expense Categories</h3><div className="border rounded-lg overflow-hidden"><Table><TableHeader><TableRow><TableHead>SL</TableHead><TableHead>Name</TableHead><TableHead>Description</TableHead><TableHead>Action</TableHead></TableRow></TableHeader><TableBody>{categoriesLoading ? <TableRow><TableCell colSpan={4} className="py-10 text-center">Loading...</TableCell></TableRow> : categories.length === 0 ? <TableRow><TableCell colSpan={4} className="py-10 text-center">No categories found</TableCell></TableRow> : categories.map((cat: any, index: number) => <TableRow key={cat.id}><TableCell>{(categoryPage - 1) * 10 + index + 1}</TableCell><TableCell>{cat.name}</TableCell><TableCell>{cat.description || "-"}</TableCell><TableCell><Button variant="ghost" size="icon" disabled={deletingCategory} onClick={() => removeCategory(cat.id)}><Trash2 className="w-4 h-4" /></Button></TableCell></TableRow>)}</TableBody></Table></div><div className="flex items-center justify-between mt-4"><p className="text-sm text-muted-foreground">Page {categoryMeta?.page ?? categoryPage} of {categoryMeta?.totalPages ?? 1}</p><div className="flex gap-2"><Button variant="outline" size="sm" disabled={categoryPage <= 1} onClick={() => setCategoryPage((p) => Math.max(1, p - 1))}>Previous</Button><Button variant="outline" size="sm" disabled={categoryMeta ? categoryPage >= categoryMeta.totalPages : true} onClick={() => setCategoryPage((p) => p + 1)}>Next</Button></div></div></CardContent></Card></div>
           </TabsContent>
         </Tabs>
       </div>

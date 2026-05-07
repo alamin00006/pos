@@ -1,10 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+/**
+ * Coordinates Backup business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class BackupService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Handles the get backup info workflow for Backup records.
+   */
   async getBackupInfo() {
     const [
       usersCount, customersCount, suppliersCount, productsCount,
@@ -39,6 +45,9 @@ export class BackupService {
     };
   }
 
+  /**
+   * Handles the export data workflow for Backup records.
+   */
   async exportData() {
     const [
       users,

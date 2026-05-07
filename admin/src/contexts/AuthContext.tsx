@@ -16,7 +16,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const MOCK_USER = {
-  email: "admin@softghor.com",
+  email: "pos@admin.com",
   password: "admin",
   name: "Admin User",
   role: "Administrator",

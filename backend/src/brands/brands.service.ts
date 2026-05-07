@@ -5,10 +5,16 @@ import { UpdateBrandDto } from './dto/update-brand.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { paginate, buildPaginationQuery, buildOrderByQuery, buildSearchQuery } from '../common/utils/pagination.util';
 
+/**
+ * Coordinates Brands business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class BrandsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Retrieves filtered Brands records for API consumers.
+   */
   async findAll(query: PaginationDto) {
     const { page, limit, search, sortBy, sortOrder } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -42,6 +48,9 @@ export class BrandsService {
     return paginate(formattedBrands, total, page!, limit!);
   }
 
+  /**
+   * Retrieves a single Brands record by identifier.
+   */
   async findOne(id: string) {
     const brand = await this.prisma.brand.findFirst({
       where: { id, ...this.prisma.notDeleted() },
@@ -61,6 +70,9 @@ export class BrandsService {
     };
   }
 
+  /**
+   * Creates a new Brands record after validating the request payload.
+   */
   async create(createBrandDto: CreateBrandDto) {
     const existing = await this.prisma.brand.findFirst({
       where: { name: createBrandDto.name, ...this.prisma.notDeleted() },
@@ -73,6 +85,9 @@ export class BrandsService {
     return this.prisma.brand.create({ data: createBrandDto });
   }
 
+  /**
+   * Updates an existing Brands record with the provided changes.
+   */
   async update(id: string, updateBrandDto: UpdateBrandDto) {
     const brand = await this.findOne(id);
 
@@ -91,6 +106,9 @@ export class BrandsService {
     });
   }
 
+  /**
+   * Removes an existing Brands record while preserving business consistency.
+   */
   async remove(id: string) {
     await this.findOne(id);
     await this.prisma.brand.update({

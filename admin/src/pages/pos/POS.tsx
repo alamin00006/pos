@@ -303,13 +303,56 @@ const POS = () => {
 
   return (
     <DashboardLayout title="Point of Sale">
-      <div className="flex gap-6 h-[calc(100vh-6rem)]">
+      <div className="space-y-6">
+        <section className="rounded-lg border border-primary/15 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-medium uppercase tracking-wide text-primary">
+                Checkout counter
+              </p>
+              <h1 className="mt-2 text-2xl font-semibold text-gray-950">
+                Point of Sale
+              </h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Add products, manage customers, collect payment, and complete the sale quickly.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-3 rounded-lg border border-primary/10 bg-primary/5 p-3 text-center">
+              <div>
+                <p className="text-xs text-gray-500">Items</p>
+                <p className="text-lg font-semibold text-gray-950">{cart.length}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Customer</p>
+                <p className="max-w-28 truncate text-lg font-semibold text-gray-950">
+                  {selectedCustomer?.name || "Walk-in"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Total</p>
+                <p className="text-lg font-semibold text-primary">
+                  Tk {total.toFixed(0)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      <div className="flex flex-col gap-6 xl:flex-row xl:h-[calc(100vh-14rem)]">
         {/* Products Section */}
-        <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-gray-100">
+        <div className="flex-1 flex flex-col bg-white rounded-lg shadow-sm border border-primary/10">
           <div className="p-4 border-b border-gray-100">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-800">Products</h2>
-              <Badge variant="secondary" className="bg-blue-50 text-blue-700">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <ShoppingBag className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-950">Products</h2>
+                  <p className="text-sm text-gray-500">Search inventory and tap to add.</p>
+                </div>
+              </div>
+              <Badge variant="secondary" className="bg-primary/10 text-primary">
                 {products.length} items
               </Badge>
             </div>
@@ -332,7 +375,7 @@ const POS = () => {
                     variant={!selectedCategory ? "default" : "outline"}
                     onClick={() => setSelectedCategory(undefined)}
                     className={
-                      !selectedCategory ? "bg-blue-600 hover:bg-blue-700" : ""
+                      !selectedCategory ? "bg-primary hover:bg-primary/90" : ""
                     }
                   >
                     <Package className="w-4 h-4 mr-2" />
@@ -349,7 +392,7 @@ const POS = () => {
                       onClick={() => setSelectedCategory(c.id)}
                       className={
                         selectedCategory === c.id
-                          ? "bg-blue-600 hover:bg-blue-700"
+                          ? "bg-primary hover:bg-primary/90"
                           : ""
                       }
                     >
@@ -364,24 +407,24 @@ const POS = () => {
           <ScrollArea className="flex-1 p-4">
             {isLoading ? (
               <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {products.map((p: any) => (
                   <Card
                     key={p.id}
-                    className="cursor-pointer hover:border-blue-500 hover:shadow-lg transition-all duration-200 group"
+                    className="cursor-pointer border-primary/10 hover:border-primary/50 hover:shadow-md transition-all duration-200 group"
                     onClick={() => addToCart(p)}
                   >
                     <CardContent className="p-4">
-                      <div className="aspect-square bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg mb-3 flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <ShoppingBag className="w-8 h-8 text-blue-600" />
+                      <div className="aspect-square bg-primary/10 rounded-md mb-3 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+                        <ShoppingBag className="w-8 h-8 text-primary" />
                       </div>
                       <p className="text-sm font-medium text-gray-800 truncate">
                         {p.name}
                       </p>
-                      <p className="text-lg font-bold text-blue-600 mt-2">
+                      <p className="text-lg font-bold text-primary mt-2">
                         ৳{p.sellPrice}
                       </p>
                     </CardContent>
@@ -393,12 +436,12 @@ const POS = () => {
         </div>
 
         {/* Cart & Customer Section */}
-        <Card className="w-96 flex flex-col shadow-lg border-gray-200">
+        <Card className="w-full xl:w-96 flex flex-col shadow-sm border-primary/10">
           {/* Customer Section */}
-          <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+          <div className="p-4 border-b border-gray-100 bg-primary/5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-600" />
+                <Users className="w-4 h-4 text-primary" />
                 Customer
               </h3>
               <div className="flex gap-1">
@@ -407,7 +450,7 @@ const POS = () => {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 w-8 p-0 text-blue-600"
+                      className="h-8 w-8 p-0 text-primary"
                       onClick={() => setIsLedgerDialogOpen(true)}
                     >
                       <History className="w-4 h-4" />
@@ -508,7 +551,7 @@ const POS = () => {
                         />
                       </div>
                       <Button
-                        className="w-full bg-blue-600 hover:bg-blue-700"
+                        className="w-full bg-primary hover:bg-primary/90"
                         onClick={handleAddCustomer}
                         disabled={isCreatingCustomer}
                       >
@@ -533,7 +576,7 @@ const POS = () => {
                     <div className="flex items-center justify-between w-full">
                       <div className="flex items-center gap-2">
                         <Avatar className="w-6 h-6">
-                          <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs">
                             {getInitials(selectedCustomer.name)}
                           </AvatarFallback>
                         </Avatar>
@@ -580,7 +623,7 @@ const POS = () => {
                         >
                           <div className="flex items-center gap-3">
                             <Avatar>
-                              <AvatarFallback className="bg-blue-100 text-blue-600">
+                              <AvatarFallback className="bg-primary/10 text-primary">
                                 {getInitials(customer.name)}
                               </AvatarFallback>
                             </Avatar>
@@ -632,8 +675,8 @@ const POS = () => {
                       key={item.id}
                       className="flex items-center gap-3 p-3 bg-white border rounded-lg shadow-sm"
                     >
-                      <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                        <Package className="w-5 h-5 text-blue-600" />
+                      <div className="w-10 h-10 bg-primary/10 rounded-md flex items-center justify-center">
+                        <Package className="w-5 h-5 text-primary" />
                       </div>
 
                       <div className="flex-1 min-w-0">
@@ -714,7 +757,7 @@ const POS = () => {
                 <Separator />
                 <div className="flex justify-between items-center">
                   <span className="font-semibold">Total</span>
-                  <span className="text-xl font-bold text-blue-600">
+                  <span className="text-xl font-bold text-primary">
                     ৳{total.toFixed(0)}
                   </span>
                 </div>
@@ -724,28 +767,28 @@ const POS = () => {
                 <Button
                   variant={paymentMethod === "CASH" ? "default" : "outline"}
                   onClick={() => setPaymentMethod("CASH")}
-                  className={paymentMethod === "CASH" ? "bg-blue-600" : ""}
+                  className={paymentMethod === "CASH" ? "bg-primary" : ""}
                 >
                   <Banknote className="w-4 h-4" />
                 </Button>
                 <Button
                   variant={paymentMethod === "CARD" ? "default" : "outline"}
                   onClick={() => setPaymentMethod("CARD")}
-                  className={paymentMethod === "CARD" ? "bg-blue-600" : ""}
+                  className={paymentMethod === "CARD" ? "bg-primary" : ""}
                 >
                   <CreditCard className="w-4 h-4" />
                 </Button>
                 <Button
                   variant={paymentMethod === "BKASH" ? "default" : "outline"}
                   onClick={() => setPaymentMethod("BKASH")}
-                  className={paymentMethod === "BKASH" ? "bg-blue-600" : ""}
+                  className={paymentMethod === "BKASH" ? "bg-primary" : ""}
                 >
                   <QrCode className="w-4 h-4" />
                 </Button>
               </div>
 
               <Button
-                className="w-full bg-blue-600 hover:bg-blue-700 h-12"
+                className="w-full bg-primary hover:bg-primary/90 h-12"
                 onClick={handleCheckout}
                 disabled={!cart.length || isSaving}
               >
@@ -895,6 +938,7 @@ const POS = () => {
           </div>
         </DialogContent>
       </Dialog>
+      </div>
     </DashboardLayout>
   );
 };

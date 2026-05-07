@@ -101,7 +101,7 @@ const Stock = () => {
               <SlidersHorizontal className="w-4 h-4 mr-2" />
               Filter
             </Button>
-            <Button className="bg-[hsl(0,65%,65%)] hover:bg-[hsl(0,65%,55%)] text-white" onClick={handleReset}>
+            <Button className="bg-primary hover:bg-primary/90 text-white" onClick={handleReset}>
               Reset
             </Button>
           </div>
@@ -170,7 +170,7 @@ const Stock = () => {
 
       {/* Footer */}
       <div className="text-center text-sm text-muted-foreground mt-8">
-        Copyright © 2026 <span className="text-primary font-medium">SOFTGHOR</span>. All rights reserved.
+        Copyright © 2026 <span className="text-primary font-medium">POS Software</span>. All rights reserved.
       </div>
     </DashboardLayout>
   );

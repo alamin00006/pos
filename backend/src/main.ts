@@ -47,8 +47,8 @@ async function bootstrap() {
 
   // Swagger
   const config = new DocumentBuilder()
-    .setTitle("SoftGhor POS API")
-    .setDescription("API documentation for SoftGhor POS Admin Panel")
+    .setTitle("POS Software API")
+    .setDescription("API documentation for POS Software Admin Panel")
     .setVersion("1.0")
     .addBearerAuth(
       {

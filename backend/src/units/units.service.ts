@@ -15,10 +15,16 @@ import {
   buildSearchQuery,
 } from "../common/utils/pagination.util";
 
+/**
+ * Coordinates Units business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class UnitsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Retrieves filtered Units records for API consumers.
+   */
   async findAll(query: PaginationDto) {
     const { page, limit, search, sortBy, sortOrder } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -68,6 +74,9 @@ export class UnitsService {
     return paginate(formatted, total, page!, limit!);
   }
 
+  /**
+   * Retrieves a single Units record by identifier.
+   */
   async findOne(id: string) {
     const unit = await this.prisma.unit.findFirst({
       where: { id, ...this.prisma.notDeleted() },
@@ -85,6 +94,9 @@ export class UnitsService {
     return unit;
   }
 
+  /**
+   * Creates a new Units record after validating the request payload.
+   */
   async create(dto: CreateUnitDto) {
     // unique name check
     const existing = await this.prisma.unit.findFirst({
@@ -127,6 +139,9 @@ export class UnitsService {
     return this.findOne(unit.id);
   }
 
+  /**
+   * Updates an existing Units record with the provided changes.
+   */
   async update(id: string, dto: UpdateUnitDto) {
     const unit = await this.findOne(id);
 
@@ -186,10 +201,13 @@ export class UnitsService {
     return this.findOne(id);
   }
 
+  /**
+   * Removes an existing Units record while preserving business consistency.
+   */
   async remove(id: string) {
     await this.findOne(id);
 
-    // optional: delete conversion first (cascade আছে unitId এ, but safe)
+    // optional: delete conversion first (cascade à¦†à¦›à§‡ unitId à¦, but safe)
     await this.prisma.unitConversion.deleteMany({ where: { unitId: id } });
 
     await this.prisma.unit.update({

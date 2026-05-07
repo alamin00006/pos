@@ -7,15 +7,19 @@ import { useNavigate, useLocation } from "@/lib/router";
 
 import { useAppDispatch, useAppSelector } from "@/hooks/reduxHook";
 import { logout as logoutAction } from "@/redux/authSlice";
+import { authKey } from "@/constants/authKey";
+import { removeFromLocalStorage } from "@/lib/utils/local-storage";
+import {
+  AppNotification,
+  useGetNotificationsQuery,
+} from "@/redux/api/notificationsApi";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { usePermission } from "@/hooks/usePermission";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import {
-  LayoutDashboard,
   ShoppingBag,
   LogOut,
   Bell,
@@ -28,6 +32,7 @@ import {
   Moon,
   Sun,
   X,
+  Building2,
 } from "lucide-react";
 
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -48,29 +53,77 @@ interface DashboardLayoutProps {
 function SidebarLink({
   href,
   className,
+  onClick,
   children,
 }: {
   href: string;
   className?: string;
+  onClick?: () => void;
   children: React.ReactNode;
 }) {
   // Support "#" links if needed
   if (href === "#") {
     return (
-      <a href={href} className={className}>
+      <a
+        href={href}
+        className={className}
+        onClick={(event) => {
+          event.preventDefault();
+          onClick?.();
+        }}
+      >
         {children}
       </a>
     );
   }
 
   return (
-    <Link href={href} className={className}>
+    <Link href={href} className={className} onClick={onClick}>
       {children}
     </Link>
   );
 }
 
-const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+function NotificationItem({
+  item,
+  onClick,
+}: {
+  item: AppNotification;
+  onClick: () => void;
+}) {
+  const content = (
+    <div className="flex gap-3 px-4 py-3 transition-colors hover:bg-muted/40">
+      <span
+        className={cn(
+          "mt-1 h-2.5 w-2.5 shrink-0 rounded-full",
+          item.type === "success" && "bg-primary",
+          item.type === "warning" && "bg-yellow-500",
+          item.type === "danger" && "bg-destructive",
+          item.type === "info" && "bg-muted-foreground",
+        )}
+      />
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground">{item.title}</p>
+        <p className="text-xs text-muted-foreground">{item.message}</p>
+        <p className="mt-1 text-[10px] text-muted-foreground">
+          {formatNotificationTime(item.createdAt)}
+        </p>
+      </div>
+    </div>
+  );
+
+  if (item.href) {
+    return (
+      <Link href={item.href} onClick={onClick} className="block border-b border-border last:border-b-0">
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className="border-b border-border last:border-b-0">{content}</div>;
+}
+
+const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
 
@@ -84,41 +137,36 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const { resolvedTheme, setTheme } = useTheme();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const notifications = [
-    {
-      id: "n1",
-      title: "New sale completed",
-      message: "Invoice #INV-2045 processed successfully.",
-      time: "2 min ago",
-    },
-    {
-      id: "n2",
-      title: "Low stock alert",
-      message: "Product “Premium Oil 5L” is below threshold.",
-      time: "18 min ago",
-    },
-    {
-      id: "n3",
-      title: "Payment received",
-      message: "Customer payment of Tk 18,500 received.",
-      time: "1 hr ago",
-    },
-  ];
-
+  const {
+    data: notificationsData,
+    isLoading: isNotificationsLoading,
+    isError: isNotificationsError,
+  } = useGetNotificationsQuery(undefined, {
+    pollingInterval: 60_000,
+    skip: !user,
+  });
+  const notifications = notificationsData?.notifications ?? [];
+  const unreadCount = notificationsData?.unreadCount ?? notifications.length;
   const handleLogout = () => {
+    removeFromLocalStorage(authKey);
+    removeFromLocalStorage("selectedBranchId");
     dispatch(logoutAction());
-    navigate("/login");
+    navigate("/");
   };
 
-  const toggleExpanded = (label: string) => {
-    setExpandedItems((prev) =>
-      prev.includes(label) ? prev.filter((x) => x !== label) : [...prev, label],
-    );
+  const setItemExpanded = (label: string, open: boolean) => {
+    setExpandedItems((prev) => {
+      if (open) {
+        return prev.includes(label) ? prev : [...prev, label];
+      }
+      return prev.filter((x) => x !== label);
+    });
   };
 
   const isChildActive = (item: MenuItem) =>
@@ -162,7 +210,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       .filter(Boolean) as MenuSection[];
   }, [hasPermission]);
 
-  const SidebarContent = ({
+  const renderSidebarContent = ({
     collapsed,
     onCloseMobile,
   }: {
@@ -173,11 +221,19 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
         {/* Top / Brand (mobile close like AdminSidebar) */}
         {isMobile ? (
-          <div className="flex items-center justify-between p-3">
+          <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm">
-                <span className="text-primary">Pos</span>soft
-              </span>
+              <div className="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground font-bold">
+                PS
+              </div>
+              <div>
+                <span className="block font-bold text-sm leading-tight">
+                  POS Software
+                </span>
+                <span className="block text-[11px] text-sidebar-foreground/55">
+                  Business control
+                </span>
+              </div>
             </div>
             <Button
               variant="ghost"
@@ -189,37 +245,47 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             </Button>
           </div>
         ) : (
-          !collapsed && (
-            <div className="pt-3 pb-2 flex items-center justify-center gap-2">
-              <span className="font-bold text-xl">
-                <span className="text-primary">Pos</span>soft
-              </span>
+          <div className="p-4 border-b border-sidebar-border">
+            <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground font-bold shadow-sm">
+                PS
+              </div>
+              {!collapsed && (
+                <div className="min-w-0">
+                  <span className="block font-bold text-base leading-tight">
+                    POS Software
+                  </span>
+                  <span className="block text-xs text-sidebar-foreground/55">
+                    Retail management
+                  </span>
+                </div>
+              )}
             </div>
-          )
+          </div>
         )}
 
         {/* Search (only when not collapsed on desktop, always on mobile like AdminSidebar) */}
         {(!collapsed || isMobile) && (
-          <div className={cn("px-3 pb-2", !isMobile && "p-3")}>
+          <div className={cn("px-4 py-3", !isMobile && "px-4")}>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-sidebar-foreground/45" />
               <Input
-                placeholder="Search Menu..."
+                placeholder="Search menu"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 bg-white text-black border-none placeholder:text-black h-9"
+                className="pl-9 bg-sidebar-accent/60 text-sidebar-foreground border-sidebar-border placeholder:text-sidebar-foreground/45 h-9"
               />
             </div>
           </div>
         )}
 
         {/* Menu */}
-        <ScrollArea className="flex-1 px-3">
-          <div className="space-y-4 pb-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3 sidebar-menu-scroll">
+          <div className="space-y-5 pb-4 pt-1">
             {filteredMenuSections.map((section, idx) => (
               <div key={section.title ?? idx}>
                 {(!collapsed || isMobile) && section.title && (
-                  <div className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-2 px-3">
+                  <div className="text-[11px] font-semibold text-sidebar-foreground/45 uppercase tracking-wider mb-2 px-3">
                     {section.title}
                   </div>
                 )}
@@ -254,21 +320,28 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                           {hasChildren ? (
                             <Collapsible
                               open={isExpanded}
-                              onOpenChange={() => toggleExpanded(item.label)}
+                              onOpenChange={(open) => setItemExpanded(item.label, open)}
                             >
                               <CollapsibleTrigger asChild>
                                 <button
+                                  type="button"
                                   className={cn(
-                                    "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
+                                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground/78 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
                                     collapsed && !isMobile && "justify-center",
                                     isActive &&
-                                      "bg-sidebar-accent text-sidebar-foreground",
+                                      "bg-primary/16 text-sidebar-foreground ring-1 ring-primary/25",
                                   )}
                                   title={
                                     collapsed && !isMobile
                                       ? item.label
                                       : undefined
                                   }
+                                  onClick={() => {
+                                    if (collapsed && !isMobile) {
+                                      setIsSidebarCollapsed(false);
+                                      setItemExpanded(item.label, true);
+                                    }
+                                  }}
                                 >
                                   <Icon className="h-4 w-4 shrink-0" />
                                   {(!collapsed || isMobile) && (
@@ -298,10 +371,11 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                                         <SidebarLink
                                           key={child.path}
                                           href={child.path}
+                                          onClick={onCloseMobile}
                                           className={cn(
-                                            "block px-3 py-1.5 rounded-md text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
+                                            "block px-3 py-2 rounded-md text-sm text-sidebar-foreground/68 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
                                             active &&
-                                              "bg-sidebar-accent text-sidebar-foreground",
+                                              "bg-primary/14 text-sidebar-foreground",
                                           )}
                                         >
                                           {child.label}
@@ -315,12 +389,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                           ) : (
                             <SidebarLink
                               href={item.path ?? "#"}
+                              onClick={onCloseMobile}
                               className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
+                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sidebar-foreground/78 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
                                 collapsed && !isMobile && "justify-center",
                                 item.path &&
                                   location.pathname === item.path &&
-                                  "bg-sidebar-accent text-sidebar-foreground",
+                                  "bg-primary/16 text-sidebar-foreground ring-1 ring-primary/25",
                               )}
                             >
                               <Icon className="h-4 w-4 shrink-0" />
@@ -338,15 +413,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               </div>
             ))}
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Bottom user + logout (AdminSidebar style) */}
         <div className="p-3 border-t border-sidebar-border">
           {!collapsed || isMobile ? (
             <>
-              <div className="flex items-center gap-3 p-2 rounded-lg bg-sidebar-primary">
-                <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-sidebar-foreground">
+              <div className="flex items-center gap-3 p-2 rounded-md bg-sidebar-accent/70">
+                <div className="h-9 w-9 rounded-md bg-primary/20 flex items-center justify-center">
+                  <span className="text-sm font-semibold text-primary">
                     {user?.name?.charAt(0) || "A"}
                   </span>
                 </div>
@@ -390,21 +465,21 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   };
 
   return (
-    <div className="h-screen bg-background flex overflow-hidden">
+    <div className="h-screen bg-background flex overflow-hidden admin-shell">
       {/* Desktop Sidebar */}
       <aside
         className={cn(
-          "hidden lg:flex flex-col flex-shrink-0 shadow-xl transition-[width] duration-200",
-          isSidebarCollapsed ? "w-16" : "w-64",
+          "hidden lg:flex flex-col flex-shrink-0 border-r border-sidebar-border transition-[width] duration-200",
+          isSidebarCollapsed ? "w-[72px]" : "w-[280px]",
         )}
       >
-        <SidebarContent collapsed={isSidebarCollapsed} />
+        {renderSidebarContent({ collapsed: isSidebarCollapsed })}
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Header */}
-        <header className="h-16 flex-shrink-0 bg-header flex items-center justify-between px-4 lg:px-6 relative">
+        <header className="h-16 flex-shrink-0 bg-header/95 backdrop-blur border-b border-border flex items-center justify-between px-4 lg:px-6 relative">
           <div className="flex items-center gap-4">
             {/* Desktop collapse btn */}
             <Button
@@ -424,7 +499,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             </Button>
 
             {/* Mobile Menu (AdminSidebar overlay inside Sheet) */}
-            <Sheet>
+            <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
               <SheetTrigger asChild>
                 <Button
                   variant="ghost"
@@ -435,23 +510,21 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="p-0 w-64 border-0">
-                <SidebarContent
-                  collapsed={false}
-                  onCloseMobile={() => {
-                    // Sheet closes itself when user clicks outside / close button?
-                    // If your Sheet needs manual close, handle it via controlled Sheet.
-                  }}
-                />
+                {renderSidebarContent({
+                  collapsed: false,
+                  onCloseMobile: () => setIsMobileSidebarOpen(false),
+                })}
               </SheetContent>
             </Sheet>
 
-            <div>
-              <h2 className="text-lg font-bold text-header-foreground">
-                SOFTGHOR Digital POS Software
-              </h2>
-              <p className="text-xs text-primary">
-                To Order: 01958-104255, 01958-104250
-              </p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <Building2 className="h-3.5 w-3.5" />
+                <span>Admin Workspace</span>
+              </div>
+              <h1 className="truncate text-lg font-semibold text-header-foreground">
+                {title}
+              </h1>
             </div>
           </div>
 
@@ -459,8 +532,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <div className="relative hidden md:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-header-foreground/50" />
               <Input
-                placeholder="Search..."
-                className="pl-10 w-64 bg-header-foreground/10 border-0 text-header-foreground placeholder:text-header-foreground/50"
+                placeholder="Search workspace"
+                className="pl-10 w-64 bg-muted/70 border-border text-header-foreground placeholder:text-muted-foreground"
               />
             </div>
 
@@ -489,15 +562,24 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               aria-label="Notifications"
             >
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
+              {unreadCount > 0 && (
+                <span className="absolute right-0.5 top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </Button>
 
             {isNotificationsOpen && (
               <div className="absolute right-4 top-16 z-50 w-80 rounded-lg border border-border bg-card shadow-lg">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                  <p className="text-sm font-semibold text-foreground">
-                    Notifications
-                  </p>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      Notifications
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {unreadCount} active update{unreadCount === 1 ? "" : "s"}
+                    </p>
+                  </div>
                   <button
                     className="text-xs text-primary hover:text-primary/90"
                     onClick={() => setIsNotificationsOpen(false)}
@@ -505,28 +587,31 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                     Close
                   </button>
                 </div>
-                <ul className="max-h-80 overflow-auto">
-                  {notifications.map((item) => (
-                    <li
-                      key={item.id}
-                      className="px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors"
-                    >
-                      <p className="text-sm font-medium text-foreground">
-                        {item.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.message}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        {item.time}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-                <div className="px-4 py-2 text-center">
-                  <button className="text-xs text-primary hover:text-primary/90">
-                    View all
-                  </button>
+                <div className="max-h-80 overflow-auto">
+                  {isNotificationsLoading ? (
+                    <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                      Loading notifications...
+                    </div>
+                  ) : isNotificationsError ? (
+                    <div className="px-4 py-8 text-center text-sm text-destructive">
+                      Could not load notifications.
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                      No active notifications.
+                    </div>
+                  ) : (
+                    <ul>
+                      {notifications.map((item) => (
+                        <li key={item.id}>
+                          <NotificationItem
+                            item={item}
+                            onClick={() => setIsNotificationsOpen(false)}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
             )}
@@ -582,10 +667,32 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 p-4 lg:p-6 overflow-auto">{children}</div>
+        <div className="flex-1 overflow-auto">
+          <div className="admin-page px-4 py-5 lg:px-6 lg:py-6">
+            {children}
+          </div>
+        </div>
       </main>
     </div>
   );
 };
 
 export default DashboardLayout;
+
+const formatNotificationTime = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Just now";
+
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hr ago`;
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+};

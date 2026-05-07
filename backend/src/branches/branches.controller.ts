@@ -5,12 +5,18 @@ import { Permissions } from '../common/decorators';
 import { AssignUserBranchDto, CreateBranchDto, UpdateBranchDto } from './dto';
 import { BranchesService } from './branches.service';
 
+/**
+ * Exposes HTTP endpoints for Branches operations.
+ */
 @ApiTags('Branches')
 @ApiBearerAuth()
 @Controller('branches')
 export class BranchesController {
   constructor(private readonly service: BranchesService) {}
 
+  /**
+   * Get all branches.
+   */
   @Get()
   @Permissions('settings')
   @ApiOperation({ summary: 'Get all branches' })
@@ -18,6 +24,9 @@ export class BranchesController {
     return this.service.findAll(query);
   }
 
+  /**
+   * Get branch by ID.
+   */
   @Get(':id')
   @Permissions('settings')
   @ApiOperation({ summary: 'Get branch by ID' })
@@ -25,6 +34,9 @@ export class BranchesController {
     return this.service.findOne(id);
   }
 
+  /**
+   * Create branch.
+   */
   @Post()
   @Permissions('settings')
   @ApiOperation({ summary: 'Create branch' })
@@ -32,6 +44,9 @@ export class BranchesController {
     return this.service.create(dto);
   }
 
+  /**
+   * Update branch.
+   */
   @Patch(':id')
   @Permissions('settings')
   @ApiOperation({ summary: 'Update branch' })
@@ -39,6 +54,9 @@ export class BranchesController {
     return this.service.update(id, dto);
   }
 
+  /**
+   * Delete branch.
+   */
   @Delete(':id')
   @Permissions('settings')
   @ApiOperation({ summary: 'Delete branch' })
@@ -46,6 +64,9 @@ export class BranchesController {
     return this.service.remove(id);
   }
 
+  /**
+   * Assign user to branch.
+   */
   @Post(':id/users')
   @Permissions('settings')
   @ApiOperation({ summary: 'Assign user to branch' })
@@ -53,6 +74,9 @@ export class BranchesController {
     return this.service.assignUser(id, dto);
   }
 
+  /**
+   * Remove user from branch.
+   */
   @Delete(':id/users/:userId')
   @Permissions('settings')
   @ApiOperation({ summary: 'Remove user from branch' })

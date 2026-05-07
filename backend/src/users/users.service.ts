@@ -15,10 +15,16 @@ import {
   buildSearchQuery,
 } from "../common/utils/pagination.util";
 
+/**
+ * Coordinates Users business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Retrieves filtered Users records for API consumers.
+   */
   async findAll(query: PaginationDto) {
     const { page, limit, search, sortBy, sortOrder } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -63,6 +69,9 @@ export class UsersService {
     return paginate(formattedUsers, total, page!, limit!);
   }
 
+  /**
+   * Retrieves a single Users record by identifier.
+   */
   async findOne(id: string) {
     const user = await this.prisma.user.findFirst({
       where: { id, ...this.prisma.notDeleted() },
@@ -109,12 +118,18 @@ export class UsersService {
     };
   }
 
+  /**
+   * Handles the find by email workflow for Users records.
+   */
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },
     });
   }
 
+  /**
+   * Creates a new Users record after validating the request payload.
+   */
   async create(createUserDto: CreateUserDto) {
     const existingUser = await this.findByEmail(createUserDto.email);
     if (existingUser) {
@@ -149,6 +164,9 @@ export class UsersService {
     return user;
   }
 
+  /**
+   * Updates an existing Users record with the provided changes.
+   */
   async update(id: string, updateUserDto: UpdateUserDto) {
     const user = await this.prisma.user.findFirst({
       where: { id, ...this.prisma.notDeleted() },
@@ -189,6 +207,9 @@ export class UsersService {
     return updatedUser;
   }
 
+  /**
+   * Removes an existing Users record while preserving business consistency.
+   */
   async remove(id: string) {
     const user = await this.prisma.user.findFirst({
       where: { id, ...this.prisma.notDeleted() },
@@ -206,6 +227,9 @@ export class UsersService {
     return { message: "User deleted successfully" };
   }
 
+  /**
+   * Handles the assign role workflow for Users records.
+   */
   async assignRole(userId: string, roleId: string) {
     const user = await this.prisma.user.findFirst({
       where: { id: userId, ...this.prisma.notDeleted() },
@@ -234,6 +258,9 @@ export class UsersService {
     return { message: "Role assigned successfully" };
   }
 
+  /**
+   * Handles the remove role workflow for Users records.
+   */
   async removeRole(userId: string, roleId: string) {
     await this.prisma.userRole.deleteMany({
       where: { userId, roleId },

@@ -34,6 +34,7 @@ import { SettingsModule } from "./settings/settings.module";
 import { BackupModule } from "./backup/backup.module";
 import { CashBookModule } from "./cash-book/cash-book.module";
 import { BranchesModule } from "./branches/branches.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "./common/guards/permissions.guard";
 import { BranchAccessGuard } from "./common/guards/branch-access.guard";
@@ -81,6 +82,7 @@ import { BranchAccessGuard } from "./common/guards/branch-access.guard";
     BackupModule,
     CashBookModule,
     BranchesModule,
+    NotificationsModule,
   ],
   providers: [
     {

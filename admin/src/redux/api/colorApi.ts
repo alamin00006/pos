@@ -1,8 +1,7 @@
-// colorApi.ts
-
-import { Color } from "framer-motion";
 import { baseApi } from "./baseApi";
-import { ColorFormData } from "@/components/color/color.types";
+
+type Color = any;
+type ColorFormData = any;
 
 const COLOR_URL = "/colors";
 
@@ -26,7 +25,7 @@ const colorApi = baseApi.injectEndpoints({
       query: (data) => ({
         url: `${COLOR_URL}`,
         method: "POST",
-        body: data,
+        data,
       }),
       invalidatesTags: ["user"],
     }),
@@ -34,7 +33,7 @@ const colorApi = baseApi.injectEndpoints({
       query: ({ id, data }) => ({
         url: `${COLOR_URL}/${id}`,
         method: "PUT",
-        body: data,
+        data,
       }),
       invalidatesTags: ["user"],
     }),
@@ -49,7 +48,7 @@ const colorApi = baseApi.injectEndpoints({
       query: ({ id, status }) => ({
         url: `${COLOR_URL}/${id}/status`,
         method: "PATCH",
-        body: { status },
+        data: { status },
       }),
       invalidatesTags: ["user"],
     }),

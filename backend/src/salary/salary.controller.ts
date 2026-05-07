@@ -27,12 +27,18 @@ class SalaryQueryDto extends PaginationDto {
   year?: number;
 }
 
+/**
+ * Exposes HTTP endpoints for Salary operations.
+ */
 @ApiTags('Salary')
 @ApiBearerAuth()
 @Controller('salary')
 export class SalaryController {
   constructor(private readonly service: SalaryService) {}
 
+  /**
+   * Create salary payment.
+   */
   @Post()
   @Permissions('employee_salary')
   @ApiOperation({ summary: 'Create salary payment' })
@@ -40,6 +46,9 @@ export class SalaryController {
     return this.service.create(dto);
   }
 
+  /**
+   * Get all salary payments.
+   */
   @Get()
   @Permissions('employee_salary')
   @ApiOperation({ summary: 'Get all salary payments' })
@@ -47,6 +56,9 @@ export class SalaryController {
     return this.service.findAll(query);
   }
 
+  /**
+   * Get salary payment by ID.
+   */
   @Get(':id')
   @Permissions('employee_salary')
   @ApiOperation({ summary: 'Get salary payment by ID' })

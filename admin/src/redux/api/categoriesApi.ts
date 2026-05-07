@@ -10,10 +10,7 @@ import type {
 
 export const categoriesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getCategories: builder.query<
-      ApiResponse<PaginatedResponse<Category>>,
-      CategoryListQuery
-    >({
+    getCategories: builder.query<any, CategoryListQuery>({
       query: (params) => ({
         url: "/categories",
         method: "GET",
@@ -48,10 +45,7 @@ export const categoriesApi = baseApi.injectEndpoints({
       invalidatesTags: [{ type: "Category" as const, id: "LIST" }],
     }),
 
-    updateCategory: builder.mutation<
-      ApiResponse<Category>,
-      { id: string; data: UpdateCategoryDto }
-    >({
+    updateCategory: builder.mutation<ApiResponse<Category>, any>({
       query: ({ id, data }) => ({
         url: `/categories/${id}`,
         method: "PATCH",

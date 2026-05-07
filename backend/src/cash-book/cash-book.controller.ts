@@ -32,22 +32,34 @@ class CashBookSummaryQueryDto {
   endDate?: string;
 }
 
+/**
+ * Exposes HTTP endpoints for Cash Book operations.
+ */
 @ApiTags('Cash Book')
 @ApiBearerAuth()
 @Controller('cash-book')
 export class CashBookController {
   constructor(private readonly service: CashBookService) {}
 
+  /**
+   * Get all cash book entries.
+   */
   @Get()
   @Permissions('cash_book')
   @ApiOperation({ summary: 'Get all cash book entries' })
   findAll(@Query() query: CashBookQueryDto) { return this.service.findAll(query); }
 
+  /**
+   * Get current cash balance.
+   */
   @Get('balance')
   @Permissions('cash_book')
   @ApiOperation({ summary: 'Get current cash balance' })
   getBalance() { return this.service.getBalance(); }
 
+  /**
+   * Get cash book summary.
+   */
   @Get('summary')
   @Permissions('cash_book')
   @ApiOperation({ summary: 'Get cash book summary' })

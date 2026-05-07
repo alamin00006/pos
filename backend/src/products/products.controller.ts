@@ -18,12 +18,18 @@ import { UpdateProductDto } from "./dto/update-product.dto";
 import { ProductQueryDto } from "./dto/product-query.dto";
 import { Permissions } from "../common/decorators";
 
+/**
+ * Exposes HTTP endpoints for Products operations.
+ */
 @ApiTags("Products")
 @ApiBearerAuth("access-token")
 @Controller("products")
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  /**
+   * Get all products.
+   */
   @Get()
   @Permissions("create_product")
   @ApiOperation({ summary: "Get all products" })
@@ -31,6 +37,9 @@ export class ProductsController {
     return this.productsService.findAll(query);
   }
 
+  /**
+   * Search products by name, code, or barcode.
+   */
   @Get("search")
   @Permissions("create_product")
   @ApiOperation({ summary: "Search products by name, code, or barcode" })
@@ -38,6 +47,9 @@ export class ProductsController {
     return this.productsService.search(q);
   }
 
+  /**
+   * Get product by barcode.
+   */
   @Get("by-barcode/:barcode")
   @Permissions("create_product")
   @ApiOperation({ summary: "Get product by barcode" })
@@ -45,6 +57,9 @@ export class ProductsController {
     return this.productsService.findByBarcode(barcode);
   }
 
+  /**
+   * Get product by ID.
+   */
   @Get(":id")
   @Permissions("create_product")
   @ApiOperation({ summary: "Get product by ID" })
@@ -52,6 +67,9 @@ export class ProductsController {
     return this.productsService.findOne(id);
   }
 
+  /**
+   * Get product stock quantity.
+   */
   @Get(":id/stock")
   @Permissions("stock")
   @ApiOperation({ summary: "Get product stock quantity" })
@@ -59,14 +77,20 @@ export class ProductsController {
     return this.productsService.getStock(id);
   }
 
+  /**
+   * Create new product.
+   */
   @Post()
   @Permissions("add_product", "create_product")
   @ApiOperation({ summary: "Create new product" })
   async create(@Body() createProductDto: CreateProductDto, @Req() req: any) {
-    const userId = req?.user?.id ?? req?.user?.sub ?? null; // ✅ adjust based on your JWT payload
+    const userId = req?.user?.id ?? req?.user?.sub ?? null; // âœ… adjust based on your JWT payload
     return this.productsService.create(createProductDto, userId);
   }
 
+  /**
+   * Update product.
+   */
   @Put(":id")
   @Permissions("edit_product")
   @ApiOperation({ summary: "Update product" })
@@ -75,10 +99,13 @@ export class ProductsController {
     @Body() updateProductDto: UpdateProductDto,
     @Req() req: any,
   ) {
-    const userId = req?.user?.id ?? req?.user?.sub ?? null; // ✅ adjust based on your JWT payload
+    const userId = req?.user?.id ?? req?.user?.sub ?? null; // âœ… adjust based on your JWT payload
     return this.productsService.update(id, updateProductDto, userId);
   }
 
+  /**
+   * Update product sell price.
+   */
   @Put(":id/sell-price")
   @Permissions("update_sell_price")
   @ApiOperation({ summary: "Update product sell price" })
@@ -89,6 +116,9 @@ export class ProductsController {
     return this.productsService.updateSellPrice(id, sellPrice);
   }
 
+  /**
+   * Delete product (soft delete).
+   */
   @Delete(":id")
   @HttpCode(HttpStatus.OK)
   @Permissions("delete_product")

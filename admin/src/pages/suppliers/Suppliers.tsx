@@ -177,7 +177,17 @@ const Suppliers = () => {
   return (
     <DashboardLayout title="Suppliers">
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-foreground">New Supplier</h1>
+        <section className="rounded-lg border border-primary/15 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium uppercase tracking-wide text-primary">
+              Supplier accounts
+            </p>
+            <h1 className="text-2xl font-semibold text-gray-950">Suppliers</h1>
+            <p className="text-sm text-gray-500">
+              Manage supplier profiles, opening balances, contact details, and purchase dues.
+            </p>
+          </div>
+        </section>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
           <TabsList className="bg-transparent border-b border-border rounded-none p-0 h-auto">
@@ -199,11 +209,14 @@ const Suppliers = () => {
               ADD SUPPLIER
           ========================== */}
           <TabsContent value="add" className="mt-6">
-            <Card>
+            <Card className="border-primary/10 shadow-sm">
               <CardContent className="pt-6">
-                <h3 className="text-lg font-medium text-primary mb-6">
+                <h3 className="text-lg font-semibold text-gray-950 mb-1">
                   New Supplier
                 </h3>
+                <p className="mb-6 text-sm text-gray-500">
+                  Add a supplier account for purchase and payment tracking.
+                </p>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -334,7 +347,7 @@ const Suppliers = () => {
               LIST SUPPLIERS
           ========================== */}
           <TabsContent value="list" className="mt-6">
-            <Card>
+            <Card className="border-primary/10 shadow-sm">
               <CardContent className="pt-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                   <div className="flex items-center gap-2">

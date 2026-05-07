@@ -4,10 +4,16 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 import { getPaginationMeta } from '../common/utils/pagination.util';
 import { Decimal } from '@prisma/client/runtime/library';
 
+/**
+ * Coordinates Employees business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class EmployeesService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Creates a new Employees record after validating the request payload.
+   */
   async create(dto: any) {
     return this.prisma.employee.create({
       data: {
@@ -26,6 +32,9 @@ export class EmployeesService {
     });
   }
 
+  /**
+   * Retrieves filtered Employees records for API consumers.
+   */
   async findAll(query: PaginationDto) {
     const { page = 1, limit = 10, search, sortBy = 'name', sortOrder = 'asc' } = query;
     const where: any = { deletedAt: null };
@@ -52,6 +61,9 @@ export class EmployeesService {
     return { data, meta: getPaginationMeta(total, page, limit) };
   }
 
+  /**
+   * Retrieves a single Employees record by identifier.
+   */
   async findOne(id: string) {
     const employee = await this.prisma.employee.findFirst({
       where: { id, deletedAt: null },
@@ -61,6 +73,9 @@ export class EmployeesService {
     return employee;
   }
 
+  /**
+   * Updates an existing Employees record with the provided changes.
+   */
   async update(id: string, dto: any) {
     await this.findOne(id);
     const data = { ...dto };
@@ -87,6 +102,9 @@ export class EmployeesService {
     return this.prisma.employee.update({ where: { id }, data });
   }
 
+  /**
+   * Removes an existing Employees record while preserving business consistency.
+   */
   async remove(id: string) {
     await this.findOne(id);
     return this.prisma.employee.update({ where: { id }, data: { deletedAt: new Date() } });

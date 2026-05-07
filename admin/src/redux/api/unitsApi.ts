@@ -11,10 +11,7 @@ import {
 export const unitsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     /** GET /units */
-    getUnits: builder.query<
-      ApiResponse<PaginatedResponse<Unit>>,
-      PaginationQuery
-    >({
+    getUnits: builder.query<any, PaginationQuery>({
       query: (params) => ({
         url: "/units",
         method: "GET",

@@ -196,7 +196,7 @@ const Purchases = () => {
 
       {/* Footer */}
       <div className="text-center text-sm text-muted-foreground mt-8">
-        Copyright © 2026 <span className="text-primary font-medium">SOFTGHOR</span>. All rights reserved.
+        Copyright © 2026 <span className="text-primary font-medium">POS Software</span>. All rights reserved.
       </div>
     </DashboardLayout>
   );

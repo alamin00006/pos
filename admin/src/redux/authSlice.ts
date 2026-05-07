@@ -6,6 +6,13 @@ export type AuthUser = {
   name: string;
   roles: string[];
   permissions: string[];
+  branches?: Array<{
+    id: string;
+    name: string;
+    code: string;
+    isDefault?: boolean;
+  }>;
+  defaultBranchId?: string;
 };
 
 type AuthState = {

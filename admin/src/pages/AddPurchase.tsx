@@ -160,7 +160,7 @@ const AddPurchase = () => {
         </div>
 
         {/* Payment Button */}
-        <Button className="bg-[hsl(0,65%,65%)] hover:bg-[hsl(0,65%,55%)] text-white">
+        <Button className="bg-primary hover:bg-primary/90 text-white">
           <Wallet className="w-4 h-4 mr-2" />
           Payment
         </Button>
@@ -168,7 +168,7 @@ const AddPurchase = () => {
 
       {/* Footer */}
       <div className="text-center text-sm text-muted-foreground mt-8">
-        Copyright © 2026 <span className="text-primary font-medium">SOFTGHOR</span>. All rights reserved.
+        Copyright © 2026 <span className="text-primary font-medium">POS Software</span>. All rights reserved.
       </div>
     </DashboardLayout>
   );

@@ -300,7 +300,7 @@ const Permissions = ({ roleId }: { roleId: any }) => {
 
         <footer className="text-center text-sm text-muted-foreground pt-4 border-t border-border">
           Copyright © 2026{" "}
-          <span className="text-primary font-medium">SOFTGHOR</span>. All rights
+          <span className="text-primary font-medium">POS Software</span>. All rights
           reserved.
         </footer>
       </div>

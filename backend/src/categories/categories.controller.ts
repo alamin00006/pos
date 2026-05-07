@@ -18,12 +18,18 @@ import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { PaginationDto } from "../common/dto/pagination.dto";
 import { Permissions } from "../common/decorators";
 
+/**
+ * Exposes HTTP endpoints for Categories operations.
+ */
 @ApiTags("Categories")
 @ApiBearerAuth("access-token")
 @Controller("categories")
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
+  /**
+   * Get all categories.
+   */
   @Get()
   @Permissions("create_category")
   @ApiOperation({ summary: "Get all categories" })
@@ -31,6 +37,9 @@ export class CategoriesController {
     return this.categoriesService.findAll(query);
   }
 
+  /**
+   * Get category by ID.
+   */
   @Get(":id")
   @Permissions("create_category")
   @ApiOperation({ summary: "Get category by ID" })
@@ -38,6 +47,9 @@ export class CategoriesController {
     return this.categoriesService.findOne(id);
   }
 
+  /**
+   * Create new category.
+   */
   @Post()
   @Permissions("add_category", "create_category")
   @ApiOperation({ summary: "Create new category" })
@@ -45,6 +57,9 @@ export class CategoriesController {
     return this.categoriesService.create(createCategoryDto);
   }
 
+  /**
+   * Update category.
+   */
   @Patch(":id")
   @Permissions("edit_category")
   @ApiOperation({ summary: "Update category" })
@@ -55,6 +70,9 @@ export class CategoriesController {
     return this.categoriesService.update(id, updateCategoryDto);
   }
 
+  /**
+   * Delete category (soft delete).
+   */
   @Delete(":id")
   @HttpCode(HttpStatus.OK)
   @Permissions("delete_category")

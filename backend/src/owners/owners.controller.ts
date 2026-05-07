@@ -18,19 +18,28 @@ import { UpdateOwnerDto } from "./dto/update-owner.dto";
 import { PaginationDto } from "../common/dto/pagination.dto";
 import { Permissions } from "../common/decorators";
 
+/**
+ * Exposes HTTP endpoints for Owners operations.
+ */
 @ApiTags("Owners")
-// @ApiBearerAuth("access-token")
+@ApiBearerAuth("access-token")
 @Controller("owners")
 export class OwnersController {
   constructor(private readonly ownersService: OwnersService) {}
 
+  /**
+   * Get all owners.
+   */
   @Get()
-  // @Permissions("owner_list")
+  @Permissions("owner_list")
   @ApiOperation({ summary: "Get all owners" })
   async findAll(@Query() query: PaginationDto) {
     return this.ownersService.findAll(query);
   }
 
+  /**
+   * Get owner by ID.
+   */
   @Get(":id")
   @Permissions("owner_list")
   @ApiOperation({ summary: "Get owner by ID" })
@@ -38,16 +47,22 @@ export class OwnersController {
     return this.ownersService.findOne(id);
   }
 
+  /**
+   * Create new owner.
+   */
   @Post()
-  // @Permissions("add_owner")
+  @Permissions("add_owner")
   @ApiOperation({ summary: "Create new owner" })
   async create(@Body() createOwnerDto: CreateOwnerDto) {
     console.log(createOwnerDto);
     return this.ownersService.create(createOwnerDto);
   }
 
+  /**
+   * Update owner.
+   */
   @Patch(":id")
-  // @Permissions("edit_owner")
+  @Permissions("edit_owner")
   @ApiOperation({ summary: "Update owner" })
   async update(
     @Param("id") id: string,
@@ -56,6 +71,9 @@ export class OwnersController {
     return this.ownersService.update(id, updateOwnerDto);
   }
 
+  /**
+   * Delete owner (soft delete).
+   */
   @Delete(":id")
   @HttpCode(HttpStatus.OK)
   @Permissions("delete_owner")

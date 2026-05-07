@@ -5,10 +5,16 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { paginate, buildPaginationQuery, buildOrderByQuery, buildSearchQuery } from '../common/utils/pagination.util';
 
+/**
+ * Coordinates Categories business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class CategoriesService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Retrieves filtered Categories records for API consumers.
+   */
   async findAll(query: PaginationDto) {
     const { page, limit, search, sortBy, sortOrder } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -43,6 +49,9 @@ export class CategoriesService {
     return paginate(formatted, total, page!, limit!);
   }
 
+  /**
+   * Retrieves a single Categories record by identifier.
+   */
   async findOne(id: string) {
     const category = await this.prisma.category.findFirst({
       where: { id, ...this.prisma.notDeleted() },
@@ -63,6 +72,9 @@ export class CategoriesService {
     };
   }
 
+  /**
+   * Creates a new Categories record after validating the request payload.
+   */
   async create(createCategoryDto: CreateCategoryDto) {
     const existing = await this.prisma.category.findFirst({
       where: { name: createCategoryDto.name, ...this.prisma.notDeleted() },
@@ -84,6 +96,9 @@ export class CategoriesService {
     return this.prisma.category.create({ data: createCategoryDto });
   }
 
+  /**
+   * Updates an existing Categories record with the provided changes.
+   */
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
     const category = await this.findOne(id);
 
@@ -102,6 +117,9 @@ export class CategoriesService {
     });
   }
 
+  /**
+   * Removes an existing Categories record while preserving business consistency.
+   */
   async remove(id: string) {
     await this.findOne(id);
     await this.prisma.category.update({

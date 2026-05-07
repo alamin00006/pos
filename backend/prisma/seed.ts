@@ -410,30 +410,30 @@ async function main() {
   console.log("3) Users...");
   const [adminUser, staffUser, cashierUser] = await prisma.$transaction([
     prisma.user.upsert({
-      where: { email: "admin@softghor.com" },
+      where: { email: "pos@admin.com" },
       update: { name: "Admin User", phone: "01700000000", isActive: true },
       create: {
-        email: "admin@softghor.com",
+        email: "pos@admin.com",
         password: await bcrypt.hash("admin", 10),
         name: "Admin User",
         phone: "01700000000",
       },
     }),
     prisma.user.upsert({
-      where: { email: "staff@softghor.com" },
+      where: { email: "pos@staff.com" },
       update: { name: "Staff User", phone: "01700000001", isActive: true },
       create: {
-        email: "staff@softghor.com",
+        email: "pos@staff.com",
         password: await bcrypt.hash("staff", 10),
         name: "Staff User",
         phone: "01700000001",
       },
     }),
     prisma.user.upsert({
-      where: { email: "cashier@softghor.com" },
+      where: { email: "pos@cashier.com" },
       update: { name: "Cashier User", phone: "01700000002", isActive: true },
       create: {
-        email: "cashier@softghor.com",
+        email: "pos@cashier.com",
         password: await bcrypt.hash("cashier", 10),
         name: "Cashier User",
         phone: "01700000002",
@@ -490,16 +490,16 @@ async function main() {
   await prisma.owner.upsert({
     where: { id: "seed-owner-1" },
     update: {
-      name: "SoftGhor Owner",
-      email: "owner@softghor.com",
+      name: "POS Software Owner",
+      email: "pos@owner.com",
       phone: "01733333333",
       address: "Dhaka, Bangladesh",
       nid: "1234567890",
     },
     create: {
       id: "seed-owner-1",
-      name: "SoftGhor Owner",
-      email: "owner@softghor.com",
+      name: "POS Software Owner",
+      email: "pos@owner.com",
       phone: "01733333333",
       address: "Dhaka, Bangladesh",
       nid: "1234567890",
@@ -683,6 +683,19 @@ async function main() {
       alertQuantity: 3,
       description: "Seed demo product",
     },
+    {
+      productCode: "PRD-005",
+      name: "Low Stock Demo Item",
+      barcode: "8901234567895",
+      costPrice: dec("120"),
+      sellPrice: dec("180"),
+      unitId: pc.id,
+      categoryId: catElectronics.id,
+      subcategoryId: subMobile.id,
+      brandId: brandGeneric.id,
+      alertQuantity: 10,
+      description: "Seed demo product for notification preview",
+    },
   ];
 
   for (const p of productSeeds) {
@@ -724,6 +737,7 @@ async function main() {
   const p2 = products.find((p) => p.productCode === "PRD-002")!;
   const p3 = products.find((p) => p.productCode === "PRD-003")!;
   const p4 = products.find((p) => p.productCode === "PRD-004")!;
+  const p5 = products.find((p) => p.productCode === "PRD-005")!;
 
   // -----------------------
   // 8) Supplier + Customer
@@ -739,6 +753,7 @@ async function main() {
       company: "ABC Trading",
       openingBalance: dec("2000"),
       createdById: adminUser.id,
+      branchId: mainBranch.id,
     },
     create: {
       id: "seed-supplier-1",
@@ -749,6 +764,7 @@ async function main() {
       company: "ABC Trading",
       openingBalance: dec("2000"),
       createdById: adminUser.id,
+      branchId: mainBranch.id,
     },
   });
 
@@ -760,6 +776,7 @@ async function main() {
       address: "Dhaka",
       openingBalance: dec("500"),
       createdById: adminUser.id,
+      branchId: mainBranch.id,
     },
     create: {
       id: "seed-customer-1",
@@ -768,6 +785,7 @@ async function main() {
       address: "Dhaka",
       openingBalance: dec("500"),
       createdById: adminUser.id,
+      branchId: mainBranch.id,
     },
   });
 
@@ -779,16 +797,18 @@ async function main() {
     where: { accountNumber: "012345678901" },
     update: {
       bankName: "DBBL",
-      accountName: "SoftGhor Main",
+      accountName: "POS Software Main",
       branch: "Kaliganj",
+      branchId: mainBranch.id,
       openingBalance: dec("50000"),
       currentBalance: dec("50000"),
     },
     create: {
       bankName: "DBBL",
-      accountName: "SoftGhor Main",
+      accountName: "POS Software Main",
       accountNumber: "012345678901",
       branch: "Kaliganj",
+      branchId: mainBranch.id,
       openingBalance: dec("50000"),
       currentBalance: dec("50000"),
     },
@@ -808,6 +828,7 @@ async function main() {
     where: { id: "seed-expense-1" },
     update: {
       expenseCategoryId: expCat1.id,
+      branchId: mainBranch.id,
       amount: dec("350"),
       paymentMethod: PaymentMethod.CASH,
       description: "Stationery purchase",
@@ -817,6 +838,7 @@ async function main() {
     create: {
       id: "seed-expense-1",
       expenseCategoryId: expCat1.id,
+      branchId: mainBranch.id,
       amount: dec("350"),
       paymentMethod: PaymentMethod.CASH,
       description: "Stationery purchase",
@@ -833,6 +855,7 @@ async function main() {
     where: { id: "seed-employee-1" },
     update: {
       name: "Rahim",
+      branchId: mainBranch.id,
       phone: "01744444444",
       designation: "Sales Executive",
       department: "Sales",
@@ -842,6 +865,7 @@ async function main() {
     create: {
       id: "seed-employee-1",
       name: "Rahim",
+      branchId: mainBranch.id,
       phone: "01744444444",
       designation: "Sales Executive",
       department: "Sales",
@@ -892,6 +916,7 @@ async function main() {
     where: { id: "seed-asset-1" },
     update: {
       name: "Laptop",
+      branchId: mainBranch.id,
       description: "Office laptop",
       purchasePrice: dec("55000"),
       currentValue: dec("48000"),
@@ -902,6 +927,7 @@ async function main() {
     create: {
       id: "seed-asset-1",
       name: "Laptop",
+      branchId: mainBranch.id,
       description: "Office laptop",
       purchasePrice: dec("55000"),
       currentValue: dec("48000"),
@@ -920,6 +946,7 @@ async function main() {
     { productId: p2.id, qty: 30 },
     { productId: p3.id, qty: 200 },
     { productId: p4.id, qty: 10 },
+    { productId: p5.id, qty: 2 },
   ];
 
   await prisma.$transaction(
@@ -928,6 +955,7 @@ async function main() {
         where: { id: `seed-stock-open-${idx + 1}` },
         update: {
           productId: s.productId,
+          branchId: mainBranch.id,
           type: StockLedgerType.IN,
           source: StockLedgerSource.OPENING,
           referenceId: "OPENING",
@@ -938,6 +966,7 @@ async function main() {
         create: {
           id: `seed-stock-open-${idx + 1}`,
           productId: s.productId,
+          branchId: mainBranch.id,
           type: StockLedgerType.IN,
           source: StockLedgerSource.OPENING,
           referenceId: "OPENING",
@@ -957,6 +986,7 @@ async function main() {
     where: { invoiceNo: "PUR-0001" },
     update: {
       supplierId: supplier1.id,
+      branchId: mainBranch.id,
       userId: adminUser.id,
       subtotal: dec("3000"),
       discount: dec("100"),
@@ -974,6 +1004,7 @@ async function main() {
       id: "seed-purchase-1",
       invoiceNo: "PUR-0001",
       supplierId: supplier1.id,
+      branchId: mainBranch.id,
       userId: adminUser.id,
       subtotal: dec("3000"),
       discount: dec("100"),
@@ -1011,12 +1042,51 @@ async function main() {
     skipDuplicates: true,
   });
 
+  await prisma.purchase.upsert({
+    where: { invoiceNo: "PUR-DEMO-PENDING" },
+    update: {
+      supplierId: supplier1.id,
+      branchId: mainBranch.id,
+      userId: adminUser.id,
+      subtotal: dec("600"),
+      discount: dec("0"),
+      tax: dec("0"),
+      shippingCost: dec("0"),
+      total: dec("600"),
+      paidAmount: dec("0"),
+      dueAmount: dec("600"),
+      status: PurchaseStatus.PENDING,
+      paymentStatus: PaymentStatus.PENDING,
+      note: "Demo pending purchase for notifications",
+      purchaseDate: new Date(),
+    },
+    create: {
+      id: "seed-purchase-demo-pending",
+      invoiceNo: "PUR-DEMO-PENDING",
+      supplierId: supplier1.id,
+      branchId: mainBranch.id,
+      userId: adminUser.id,
+      subtotal: dec("600"),
+      discount: dec("0"),
+      tax: dec("0"),
+      shippingCost: dec("0"),
+      total: dec("600"),
+      paidAmount: dec("0"),
+      dueAmount: dec("600"),
+      status: PurchaseStatus.PENDING,
+      paymentStatus: PaymentStatus.PENDING,
+      note: "Demo pending purchase for notifications",
+      purchaseDate: new Date(),
+    },
+  });
+
   // Stock IN for purchase
   await prisma.$transaction([
     prisma.stockLedger.upsert({
       where: { id: "seed-stock-pur-1" },
       update: {
         productId: p1.id,
+        branchId: mainBranch.id,
         type: StockLedgerType.IN,
         source: StockLedgerSource.PURCHASE,
         referenceId: purchase.id,
@@ -1027,6 +1097,7 @@ async function main() {
       create: {
         id: "seed-stock-pur-1",
         productId: p1.id,
+        branchId: mainBranch.id,
         type: StockLedgerType.IN,
         source: StockLedgerSource.PURCHASE,
         referenceId: purchase.id,
@@ -1039,6 +1110,7 @@ async function main() {
       where: { id: "seed-stock-pur-2" },
       update: {
         productId: p2.id,
+        branchId: mainBranch.id,
         type: StockLedgerType.IN,
         source: StockLedgerSource.PURCHASE,
         referenceId: purchase.id,
@@ -1049,6 +1121,7 @@ async function main() {
       create: {
         id: "seed-stock-pur-2",
         productId: p2.id,
+        branchId: mainBranch.id,
         type: StockLedgerType.IN,
         source: StockLedgerSource.PURCHASE,
         referenceId: purchase.id,
@@ -1063,6 +1136,7 @@ async function main() {
   const supplierOpening = dec("2000");
   const supplierAfterPurchase = supplierOpening.add(dec("1450"));
   const supplierAfterPayment = supplierAfterPurchase.sub(dec("1500"));
+  const supplierAfterDirectPayment = supplierAfterPayment.sub(dec("500"));
 
   await prisma.$transaction([
     prisma.supplierLedger.upsert({
@@ -1125,6 +1199,26 @@ async function main() {
         note: "Payment made",
       },
     }),
+    prisma.supplierLedger.upsert({
+      where: { id: "seed-sup-ledger-direct-pay" },
+      update: {
+        supplierId: supplier1.id,
+        type: SupplierLedgerType.PAYMENT,
+        referenceId: "seed-supplier-payment-direct",
+        amount: dec("500"),
+        balance: supplierAfterDirectPayment,
+        note: "Direct supplier cash payment",
+      },
+      create: {
+        id: "seed-sup-ledger-direct-pay",
+        supplierId: supplier1.id,
+        type: SupplierLedgerType.PAYMENT,
+        referenceId: "seed-supplier-payment-direct",
+        amount: dec("500"),
+        balance: supplierAfterDirectPayment,
+        note: "Direct supplier cash payment",
+      },
+    }),
   ]);
 
   await prisma.supplierPayment.upsert({
@@ -1142,6 +1236,25 @@ async function main() {
       amount: dec("1500"),
       paymentMethod: PaymentMethod.BANK_TRANSFER,
       note: "Seed supplier payment",
+      paymentDate: new Date(),
+    },
+  });
+
+  await prisma.supplierPayment.upsert({
+    where: { id: "seed-supplier-payment-direct" },
+    update: {
+      supplierId: supplier1.id,
+      amount: dec("500"),
+      paymentMethod: PaymentMethod.CASH,
+      note: "Seed direct supplier cash payment",
+      paymentDate: new Date(),
+    },
+    create: {
+      id: "seed-supplier-payment-direct",
+      supplierId: supplier1.id,
+      amount: dec("500"),
+      paymentMethod: PaymentMethod.CASH,
+      note: "Seed direct supplier cash payment",
       paymentDate: new Date(),
     },
   });
@@ -1204,6 +1317,7 @@ async function main() {
         type: CashBookType.OUT,
         source: CashBookSource.PURCHASE,
         referenceId: purchase.id,
+        branchId: mainBranch.id,
         amount: dec("1500"),
         balance: dec("0"),
         description: "Purchase payment (bank transfer)",
@@ -1214,9 +1328,34 @@ async function main() {
         type: CashBookType.OUT,
         source: CashBookSource.PURCHASE,
         referenceId: purchase.id,
+        branchId: mainBranch.id,
         amount: dec("1500"),
         balance: dec("0"),
         description: "Purchase payment (bank transfer)",
+        entryDate: new Date(),
+      },
+    }),
+    prisma.cashBook.upsert({
+      where: { id: "seed-cashbook-supplier-payment-direct" },
+      update: {
+        type: CashBookType.OUT,
+        source: CashBookSource.PAYMENT_MADE,
+        referenceId: "seed-supplier-payment-direct",
+        branchId: mainBranch.id,
+        amount: dec("500"),
+        balance: dec("-500"),
+        description: "Direct supplier cash payment",
+        entryDate: new Date(),
+      },
+      create: {
+        id: "seed-cashbook-supplier-payment-direct",
+        type: CashBookType.OUT,
+        source: CashBookSource.PAYMENT_MADE,
+        referenceId: "seed-supplier-payment-direct",
+        branchId: mainBranch.id,
+        amount: dec("500"),
+        balance: dec("-500"),
+        description: "Direct supplier cash payment",
         entryDate: new Date(),
       },
     }),
@@ -1643,7 +1782,7 @@ async function main() {
   // -----------------------
   console.log("19) Settings...");
   const settings = [
-    { key: "shop_name", value: "SoftGhor Demo Shop" },
+    { key: "shop_name", value: "POS Software Demo Shop" },
     { key: "shop_phone", value: "01700000000" },
     { key: "currency", value: "BDT" },
     { key: "invoice_prefix_sale", value: "SAL" },
@@ -1661,9 +1800,10 @@ async function main() {
   );
 
   console.log("✅ FULL DEMO seed complete!");
-  console.log("Admin:   admin@softghor.com / admin");
-  console.log("Staff:   staff@softghor.com / staff");
-  console.log("Cashier: cashier@softghor.com / cashier");
+  console.log("Admin:   pos@admin.com / admin");
+  console.log("Staff:   pos@staff.com / staff");
+  console.log("Cashier: pos@cashier.com / cashier");
+  console.log("Demo notifications: low stock, due sale, due purchase, today sales, pending purchase");
 }
 
 main()

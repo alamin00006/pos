@@ -21,10 +21,16 @@ import {
   recordBankTransaction,
 } from '../common/utils/pos-accounting.util';
 
+/**
+ * Coordinates Sales business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class SalesService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Retrieves filtered Sales records for API consumers.
+   */
   async findAll(query: SaleQueryDto, branchId?: string) {
     const { page, limit, sortBy, sortOrder, invoiceNo, customerId, userId, startDate, endDate, status, paymentStatus } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -69,6 +75,9 @@ export class SalesService {
     return paginate(salesWithProfit, total, page!, limit!);
   }
 
+  /**
+   * Retrieves a single Sales record by identifier.
+   */
   async findOne(id: string, branchId?: string) {
     const sale = await this.prisma.sale.findFirst({
       where: { id, ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}) },
@@ -85,6 +94,9 @@ export class SalesService {
     return sale;
   }
 
+  /**
+   * Handles the get receipt workflow for Sales records.
+   */
   async getReceipt(id: string) {
     const sale = await this.findOne(id);
     const companySettings = await this.prisma.setting.findMany({
@@ -94,6 +106,9 @@ export class SalesService {
     return { sale, company: settings };
   }
 
+  /**
+   * Creates a new Sales record after validating the request payload.
+   */
   async create(dto: CreateSaleDto, userId?: string, branchId?: string) {
     return this.prisma.$transaction(async (tx) => {
       const invoiceNo = await nextDocumentNo(tx, 'sale_invoice', 'sale', 'invoiceNo', 'SAL');
@@ -262,6 +277,9 @@ export class SalesService {
     });
   }
 
+  /**
+   * Updates an existing Sales record with the provided changes.
+   */
   async update(id: string, dto: UpdateSaleDto) {
     await this.findOne(id);
     return this.prisma.sale.update({
@@ -281,6 +299,9 @@ export class SalesService {
     });
   }
 
+  /**
+   * Removes an existing Sales record while preserving business consistency.
+   */
   async remove(id: string) {
     return this.prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findFirst({
@@ -360,6 +381,9 @@ export class SalesService {
     });
   }
 
+  /**
+   * Creates a new Sales record after validating the request payload.
+   */
   async addPayment(saleId: string, dto: AddSalePaymentDto, branchId?: string) {
     return this.prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findFirst({ where: { id: saleId, ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}) } });
@@ -443,6 +467,9 @@ export class SalesService {
     });
   }
 
+  /**
+   * Creates a new record using an existing Sales record as the source.
+   */
   async duplicate(id: string, userId?: string) {
     const originalSale = await this.findOne(id);
     
@@ -464,6 +491,9 @@ export class SalesService {
     }, userId);
   }
 
+  /**
+   * Processes refund data and updates stock, payment, and ledger state.
+   */
   async refund(saleId: string, dto: RefundSaleDto) {
     return this.prisma.$transaction(async (tx) => {
       const sale = await tx.sale.findFirst({
@@ -503,8 +533,27 @@ export class SalesService {
       // Generate return number
       const returnNo = await nextDocumentNo(tx, 'return_number', 'return', 'returnNo', 'RET');
 
+      const saleItemByProduct = new Map(sale.saleItems.map((item) => [item.productId, item]));
+      const returnItems = dto.items.map((item) => {
+        const soldItem = saleItemByProduct.get(item.productId);
+        if (!soldItem) {
+          throw new BadRequestException(`Product ${item.productId} was not sold in this invoice`);
+        }
+
+        const unitPrice = Number.isFinite(Number(item.unitPrice))
+          ? Number(item.unitPrice)
+          : Number(soldItem.unitPrice);
+
+        return {
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice,
+          total: unitPrice * item.quantity,
+        };
+      });
+
       // Calculate return total
-      const returnTotal = dto.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+      const returnTotal = returnItems.reduce((sum, item) => sum + item.total, 0);
 
       // Create return
       const saleReturn = await tx.return.create({
@@ -514,11 +563,11 @@ export class SalesService {
           total: returnTotal,
           note: dto.note,
           returnItems: {
-            create: dto.items.map(item => ({
+            create: returnItems.map(item => ({
               productId: item.productId,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
-              total: item.unitPrice * item.quantity
+              total: item.total,
             }))
           }
         },
@@ -526,7 +575,7 @@ export class SalesService {
       });
 
       // Add stock back for returned items
-      for (const item of dto.items) {
+      for (const item of returnItems) {
         await tx.stockLedger.create({
           data: {
             productId: item.productId,
@@ -581,6 +630,9 @@ export class SalesService {
     });
   }
 
+  /**
+   * Handles the get today sales workflow for Sales records.
+   */
   async getTodaySales(branchId?: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -603,6 +655,9 @@ export class SalesService {
     return { count: sales.length, totalSold, totalReceived, totalDue, sales };
   }
 
+  /**
+   * Builds the requested Sales report from current business data.
+   */
   async getSalesReport(query: SaleQueryDto, branchId?: string) {
     const { startDate, endDate, customerId } = query;
     const where: any = { ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}) };
@@ -650,6 +705,9 @@ export class SalesService {
     };
   }
 
+  /**
+   * Handles the get customer due workflow for Sales records.
+   */
   private async getCustomerDue(tx: any, customerId: string): Promise<number> {
     const ledger = await tx.customerLedger.findMany({
       where: { customerId },

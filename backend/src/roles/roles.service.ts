@@ -5,10 +5,16 @@ import { UpdateRoleDto } from './dto/update-role.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { paginate, buildPaginationQuery, buildOrderByQuery, buildSearchQuery } from '../common/utils/pagination.util';
 
+/**
+ * Coordinates Roles business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class RolesService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Retrieves filtered Roles records for API consumers.
+   */
   async findAll(query: PaginationDto) {
     const { page, limit, search, sortBy, sortOrder } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -48,6 +54,9 @@ export class RolesService {
     return paginate(formattedRoles, total, page!, limit!);
   }
 
+  /**
+   * Retrieves a single Roles record by identifier.
+   */
   async findOne(id: string) {
     const role = await this.prisma.role.findFirst({
       where: { id, ...this.prisma.notDeleted() },
@@ -84,6 +93,9 @@ export class RolesService {
     };
   }
 
+  /**
+   * Creates a new Roles record after validating the request payload.
+   */
   async create(createRoleDto: CreateRoleDto) {
     const existingRole = await this.prisma.role.findUnique({
       where: { name: createRoleDto.name },
@@ -110,6 +122,9 @@ export class RolesService {
     return role;
   }
 
+  /**
+   * Updates an existing Roles record with the provided changes.
+   */
   async update(id: string, updateRoleDto: UpdateRoleDto) {
     const role = await this.prisma.role.findFirst({
       where: { id, ...this.prisma.notDeleted() },
@@ -143,6 +158,9 @@ export class RolesService {
     return updatedRole;
   }
 
+  /**
+   * Removes an existing Roles record while preserving business consistency.
+   */
   async remove(id: string) {
     const role = await this.prisma.role.findFirst({
       where: { id, ...this.prisma.notDeleted() },
@@ -164,6 +182,9 @@ export class RolesService {
     return { message: 'Role deleted successfully' };
   }
 
+  /**
+   * Handles the assign permissions workflow for Roles records.
+   */
   async assignPermissions(roleId: string, permissionIds: string[]) {
     const role = await this.prisma.role.findFirst({
       where: { id: roleId, ...this.prisma.notDeleted() },
@@ -185,6 +206,9 @@ export class RolesService {
     return { message: 'Permissions assigned successfully' };
   }
 
+  /**
+   * Handles the update permissions workflow for Roles records.
+   */
   async updatePermissions(roleId: string, permissionIds: string[]) {
     const role = await this.prisma.role.findFirst({
       where: { id: roleId, ...this.prisma.notDeleted() },

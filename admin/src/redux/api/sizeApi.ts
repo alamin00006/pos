@@ -1,6 +1,7 @@
-
-import { Size, SizeFormData } from "@/components/Size/size.types";
 import { baseApi } from "./baseApi";
+
+type Size = any;
+type SizeFormData = any;
 
 const SIZE_URL = "/sizes";
 
@@ -27,7 +28,7 @@ const sizeApi = baseApi.injectEndpoints({
       query: (data) => ({
         url: `${SIZE_URL}`,
         method: "POST",
-        body: data,
+        data,
       }),
       invalidatesTags: ["user"], // ✅ Auto refetch after create
     }),
@@ -36,7 +37,7 @@ const sizeApi = baseApi.injectEndpoints({
       query: ({ id, data }) => ({
         url: `${SIZE_URL}/${id}`,
         method: "PUT",
-        body: data,
+        data,
       }),
       invalidatesTags: ["user"], // ✅ Auto refetch after update
     }),
@@ -53,7 +54,7 @@ const sizeApi = baseApi.injectEndpoints({
       query: ({ id, status }) => ({
         url: `${SIZE_URL}/${id}/status`,
         method: "PATCH",
-        body: { status },
+        data: { status },
       }),
       invalidatesTags: ["user"], // ✅ Auto refetch after status change
     }),

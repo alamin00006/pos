@@ -5,12 +5,18 @@ import { Permissions } from '../common/decorators';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { CreateAssetDto, UpdateAssetDto } from './dto';
 
+/**
+ * Exposes HTTP endpoints for Assets operations.
+ */
 @ApiTags('Assets')
 @ApiBearerAuth()
 @Controller('assets')
 export class AssetsController {
   constructor(private readonly service: AssetsService) {}
 
+  /**
+   * Create asset.
+   */
   @Post()
   @Permissions('create_assets')
   @ApiOperation({ summary: 'Create asset' })
@@ -18,6 +24,9 @@ export class AssetsController {
     return this.service.create(dto);
   }
 
+  /**
+   * Get all assets.
+   */
   @Get()
   @Permissions('view_assets')
   @ApiOperation({ summary: 'Get all assets' })
@@ -25,6 +34,9 @@ export class AssetsController {
     return this.service.findAll(query);
   }
 
+  /**
+   * Get asset by ID.
+   */
   @Get(':id')
   @Permissions('view_assets')
   @ApiOperation({ summary: 'Get asset by ID' })
@@ -32,6 +44,9 @@ export class AssetsController {
     return this.service.findOne(id);
   }
 
+  /**
+   * Update asset.
+   */
   @Patch(':id')
   @Permissions('edit_assets')
   @ApiOperation({ summary: 'Update asset' })
@@ -39,6 +54,9 @@ export class AssetsController {
     return this.service.update(id, dto);
   }
 
+  /**
+   * Delete asset.
+   */
   @Delete(':id')
   @Permissions('delete_assets')
   @ApiOperation({ summary: 'Delete asset' })

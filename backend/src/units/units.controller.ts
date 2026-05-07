@@ -17,12 +17,18 @@ import { UpdateUnitDto } from './dto/update-unit.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { Permissions } from '../common/decorators';
 
+/**
+ * Exposes HTTP endpoints for Units operations.
+ */
 @ApiTags('Units')
 @ApiBearerAuth('access-token')
 @Controller('units')
 export class UnitsController {
   constructor(private readonly unitsService: UnitsService) {}
 
+  /**
+   * Get all units.
+   */
   @Get()
   @Permissions('units')
   @ApiOperation({ summary: 'Get all units' })
@@ -30,6 +36,9 @@ export class UnitsController {
     return this.unitsService.findAll(query);
   }
 
+  /**
+   * Get unit by ID.
+   */
   @Get(':id')
   @Permissions('units')
   @ApiOperation({ summary: 'Get unit by ID' })
@@ -37,6 +46,9 @@ export class UnitsController {
     return this.unitsService.findOne(id);
   }
 
+  /**
+   * Create new unit.
+   */
   @Post()
   @Permissions('add_unit')
   @ApiOperation({ summary: 'Create new unit' })
@@ -44,6 +56,9 @@ export class UnitsController {
     return this.unitsService.create(createUnitDto);
   }
 
+  /**
+   * Update unit.
+   */
   @Put(':id')
   @Permissions('edit_unit')
   @ApiOperation({ summary: 'Update unit' })
@@ -51,6 +66,9 @@ export class UnitsController {
     return this.unitsService.update(id, updateUnitDto);
   }
 
+  /**
+   * Delete unit (soft delete).
+   */
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @Permissions('edit_unit')

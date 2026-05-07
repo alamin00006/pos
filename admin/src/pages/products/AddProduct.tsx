@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Plus } from "lucide-react";
+import { PackagePlus, Save, Plus } from "lucide-react";
 
 import AddCategoryModal from "@/components/AddCategoryModal";
 import AddSubcategoryModal from "@/components/AddSubcategoryModal";
@@ -67,7 +67,6 @@ const AddProduct = () => {
   const brands: SelectOption[] = brandsRes?.data ?? [];
   const units: any[] = unitsRes?.data ?? ([] as any);
 
-  console.log(brands);
   // -----------------------------
   // Mutations
   // -----------------------------
@@ -183,7 +182,6 @@ const AddProduct = () => {
 
       // navigate("/products");
     } catch (err: any) {
-      console.log(err);
       const msg =
         err?.data?.message ||
         err?.message ||
@@ -224,6 +222,24 @@ const AddProduct = () => {
 
   return (
     <DashboardLayout title="New Product">
+      <div className="space-y-6">
+        <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-primary">Inventory</p>
+              <h1 className="mt-1 text-3xl font-bold text-foreground">
+                Add product
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                Create a product with pricing, unit, category, brand, and opening stock.
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => navigate("/products")}>
+              Back to Products
+            </Button>
+          </div>
+        </section>
+
       <Tabs defaultValue="add" className="w-full">
         <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start h-auto p-0 mb-6">
           <TabsTrigger
@@ -242,9 +258,19 @@ const AddProduct = () => {
         </TabsList>
 
         <TabsContent value="add" className="mt-0">
-          <Card>
+          <Card className="border-border shadow-sm">
             <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-6">New Product</h3>
+              <div className="mb-6 flex items-center gap-3">
+                <div className="rounded-md bg-primary/10 p-2">
+                  <PackagePlus className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Product details</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Fill the required information carefully before saving.
+                  </p>
+                </div>
+              </div>
 
               {isAnyLoading && (
                 <p className="text-sm text-muted-foreground mb-4">
@@ -525,7 +551,10 @@ const AddProduct = () => {
                 </div>
 
                 {/* Save */}
-                <div className="flex justify-center pt-4">
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => navigate("/products")}>
+                    Cancel
+                  </Button>
                   <Button type="submit" className="px-8" disabled={creating}>
                     <Save className="w-4 h-4 mr-2" />
                     {creating ? "Saving..." : "Save"}
@@ -536,6 +565,7 @@ const AddProduct = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
 
       {/* Modals */}
       <AddCategoryModal

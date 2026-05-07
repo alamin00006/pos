@@ -7,10 +7,16 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 import { paginate, buildPaginationQuery, buildOrderByQuery, buildSearchQuery } from '../common/utils/pagination.util';
 import { CustomerLedgerType, CashBookType, CashBookSource } from '@prisma/client';
 
+/**
+ * Coordinates Customers business logic, validation, and persistence workflows.
+ */
 @Injectable()
 export class CustomersService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Retrieves filtered Customers records for API consumers.
+   */
   async findAll(query: PaginationDto, branchId?: string) {
     const { page, limit, search, sortBy, sortOrder } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -23,6 +29,9 @@ export class CustomersService {
     return paginate(customersWithDue, total, page!, limit!);
   }
 
+  /**
+   * Builds the requested Customers report from current business data.
+   */
   async getDueReport(query: PaginationDto, branchId?: string) {
     const { page, limit } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -31,12 +40,18 @@ export class CustomersService {
     return paginate(customersWithDue.slice(skip, skip + take), customersWithDue.length, page!, limit!);
   }
 
+  /**
+   * Retrieves a single Customers record by identifier.
+   */
   async findOne(id: string, branchId?: string) {
     const customer = await this.prisma.customer.findFirst({ where: { id, ...this.prisma.notDeleted(), ...(branchId ? { branchId } : {}) } });
     if (!customer) throw new NotFoundException('Customer not found');
     return { ...customer, due: await this.calculateDue(id) };
   }
 
+  /**
+   * Handles the get ledger workflow for Customers records.
+   */
   async getLedger(id: string, query: PaginationDto) {
     const { page, limit } = query;
     const { skip, take } = buildPaginationQuery(page, limit);
@@ -48,6 +63,9 @@ export class CustomersService {
     return paginate(ledger, total, page!, limit!);
   }
 
+  /**
+   * Creates a new Customers record after validating the request payload.
+   */
   async create(dto: CreateCustomerDto, userId?: string, branchId?: string) {
     const customer = await this.prisma.customer.create({ data: { ...dto, createdById: userId, branchId } as any });
     if (dto.openingBalance && Number(dto.openingBalance) > 0) {
@@ -56,9 +74,18 @@ export class CustomersService {
     return customer;
   }
 
+  /**
+   * Updates an existing Customers record with the provided changes.
+   */
   async update(id: string, dto: UpdateCustomerDto) { await this.findOne(id); return this.prisma.customer.update({ where: { id }, data: dto }); }
+  /**
+   * Removes an existing Customers record while preserving business consistency.
+   */
   async remove(id: string) { await this.findOne(id); await this.prisma.customer.update({ where: { id }, data: this.prisma.softDelete() }); return { message: 'Customer deleted successfully' }; }
 
+  /**
+   * Processes payment changes and keeps related ledgers in sync.
+   */
   async makePayment(customerId: string, dto: CustomerPaymentDto) {
     const customer = await this.findOne(customerId);
     const currentDue = await this.calculateDue(customerId);
@@ -72,11 +99,17 @@ export class CustomersService {
     return { message: 'Payment recorded successfully', newDue: newBalance };
   }
 
+  /**
+   * Creates a new Customers record after validating the request payload.
+   */
   async addSaleDue(customerId: string, amount: number, referenceId: string) {
     const currentDue = await this.calculateDue(customerId);
     await this.prisma.customerLedger.create({ data: { customerId, type: CustomerLedgerType.SALE_DUE, referenceId, amount, balance: currentDue + amount, note: 'Sale due' } });
   }
 
+  /**
+   * Handles the calculate due workflow for Customers records.
+   */
   private async calculateDue(customerId: string): Promise<number> {
     const ledger = await this.prisma.customerLedger.findMany({ where: { customerId }, orderBy: { createdAt: 'desc' }, take: 1 });
     return Number(ledger[0]?.balance) || 0;
