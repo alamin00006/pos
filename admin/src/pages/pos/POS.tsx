@@ -60,6 +60,7 @@ import {
 } from "@/redux/api/productsApi";
 import { useGetCategoriesQuery } from "@/redux/api/categoriesApi";
 import { useCreateSaleMutation } from "@/redux/api/salesApi";
+import { useGetBankAccountsQuery } from "@/redux/api/bankAccountsApi";
 
 import toast from "react-hot-toast";
 import {
@@ -99,6 +100,7 @@ const POS = () => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isLedgerDialogOpen, setIsLedgerDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
+  const [bankAccountId, setBankAccountId] = useState<string>("");
   const [discount, setDiscount] = useState<number>(0);
   const [note, setNote] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
@@ -139,6 +141,10 @@ const POS = () => {
     page: 1,
     limit: 50,
   }) as any;
+  const { data: bankAccountsData } = useGetBankAccountsQuery({
+    page: 1,
+    limit: 100,
+  });
 
   const { data: customersData, refetch: refetchCustomers } =
     useGetCustomersQuery({
@@ -157,6 +163,7 @@ const POS = () => {
     : productsData?.data || [];
   const categories = categoriesData?.data || [];
   const customers = customersData?.data || [];
+  const bankAccounts = bankAccountsData?.data || [];
 
   // Cart calculations
   const addToCart = (product: any) => {
@@ -258,10 +265,17 @@ const POS = () => {
   // Checkout
   const handleCheckout = async () => {
     if (!cart.length) return;
+    if (paymentMethod !== "CASH" && !bankAccountId) {
+      toast.error("Please select a bank account for non-cash payment");
+      return;
+    }
 
     try {
+      const selectedBankAccountId =
+        paymentMethod !== "CASH" ? bankAccountId : undefined;
       const payload = {
         paymentMethod,
+        bankAccountId: selectedBankAccountId,
         items: cart.map((item) => ({
           productId: item.id,
           quantity: item.quantity,
@@ -276,6 +290,7 @@ const POS = () => {
           {
             amount: total,
             paymentMethod,
+            bankAccountId: selectedBankAccountId,
           },
         ],
       };
@@ -286,6 +301,7 @@ const POS = () => {
       setCart([]);
       setSelectedCustomer(null);
       setDiscount(0);
+      setBankAccountId("");
       setNote("");
     } catch (err: any) {
       toast.error(err?.data?.message || "Sale Failed ");
@@ -786,6 +802,21 @@ const POS = () => {
                   <QrCode className="w-4 h-4" />
                 </Button>
               </div>
+
+              {paymentMethod !== "CASH" && (
+                <Select value={bankAccountId} onValueChange={setBankAccountId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select bank account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bankAccounts.map((account: any) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.accountName || account.bankName || account.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
               <Button
                 className="w-full bg-primary hover:bg-primary/90 h-12"

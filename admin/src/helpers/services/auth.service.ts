@@ -38,7 +38,7 @@ export const isLoggedIn = (): boolean => {
 export const getNewAccessToken = async (): Promise<any> => {
   try {
     const response = await axiosInstance({
-      url: `${getBaseUrl()}/users/refresh-token`,
+      url: `${getBaseUrl()}/auth/refresh`,
       method: "POST",
       headers: { "Content-Type": "application/json" },
       withCredentials: true,

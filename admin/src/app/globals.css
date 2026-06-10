@@ -50,7 +50,10 @@
   --color-accent: color-mix(in oklab, var(--primary, #16a34a) 12%, white);
   --color-accent-foreground: var(--primary, #16a34a);
   --color-sidebar-primary: var(--sidebar-primary, var(--primary, #16a34a));
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground, #ffffff);
+  --color-sidebar-primary-foreground: var(
+    --sidebar-primary-foreground,
+    #ffffff
+  );
 
   --color-primary-50: color-mix(in oklab, var(--primary, #16a34a) 10%, white);
   --color-primary-100: color-mix(in oklab, var(--primary, #16a34a) 20%, white);
@@ -230,17 +233,24 @@
 
 @layer components {
   .admin-shell {
-    background:
-      linear-gradient(180deg, hsl(var(--background)), hsl(210 18% 95%));
+    background: linear-gradient(
+      180deg,
+      hsl(var(--background)),
+      hsl(210 18% 95%)
+    );
   }
 
   .dark .admin-shell {
-    background:
-      linear-gradient(180deg, hsl(var(--background)), hsl(215 22% 7%));
+    background: linear-gradient(
+      180deg,
+      hsl(var(--background)),
+      hsl(215 22% 7%)
+    );
   }
 
   .admin-page {
     min-height: 100%;
+    box-sizing: border-box;
   }
 
   .admin-page > * {
@@ -286,13 +296,15 @@
   .admin-page .overflow-x-auto,
   .admin-page [class*="overflow-hidden"] {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklab, var(--primary) 35%, transparent) transparent;
+    scrollbar-color: color-mix(in oklab, var(--primary) 35%, transparent)
+      transparent;
   }
 
   .sidebar-menu-scroll {
     scrollbar-gutter: stable;
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklab, var(--primary) 35%, transparent) transparent;
+    scrollbar-color: color-mix(in oklab, var(--primary) 35%, transparent)
+      transparent;
   }
 
   .admin-page thead tr {
@@ -370,7 +382,11 @@
   .admin-page [class*="hover:bg-purple-"],
   .admin-page [class*="bg-pink-"],
   .admin-page [class*="hover:bg-pink-"] {
-    background-color: color-mix(in oklab, var(--primary) 12%, transparent) !important;
+    background-color: color-mix(
+      in oklab,
+      var(--primary) 12%,
+      transparent
+    ) !important;
     color: var(--primary) !important;
   }
 
@@ -418,4 +434,19 @@
   .contact-item {
     @apply flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors;
   }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.3);
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.5);
 }

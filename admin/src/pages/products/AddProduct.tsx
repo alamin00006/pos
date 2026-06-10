@@ -1,33 +1,21 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "@/lib/router";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
-import { PackagePlus, Save, Plus } from "lucide-react";
+import { PackagePlus, Save } from "lucide-react";
 
 import AddCategoryModal from "@/components/AddCategoryModal";
-import AddSubcategoryModal from "@/components/AddSubcategoryModal";
 import AddBrandModal from "@/components/AddBrandModal";
-import RichTextEditor from "@/components/RichTextEditor";
+import ProductFormFields, { ProductFormState } from "./ProductFormFields";
 
 import { useGetCategoriesQuery } from "@/redux/api/categoriesApi";
 import { useGetBrandsQuery } from "@/redux/api/brandsApi";
 
 import { useCreateProductMutation } from "@/redux/api/productsApi";
-import { useGetSubcategoriesQuery } from "@/redux/api/subcategoriesApi";
 import { useGetUnitsQuery } from "@/redux/api/unitsApi";
 import { toast } from "react-hot-toast";
 
@@ -38,18 +26,34 @@ const toNum = (v: string) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const initialProductFormData = {
+  name: "",
+  productCode: "",
+  description: "",
+
+  categoryId: "",
+  brandId: "",
+  unitId: "",
+  subUnitValue: "main",
+
+  costPrice: "",
+  sellPrice: "",
+  alertQuantity: "10",
+
+  openingStockMain: "",
+  openingStockSub: "",
+
+  imageFile: null as File | null,
+} satisfies ProductFormState;
+
 const AddProduct = () => {
   const navigate = useNavigate();
 
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showSubcategoryModal, setShowSubcategoryModal] = useState(false);
   const [showBrandModal, setShowBrandModal] = useState(false);
 
   const { data: categoriesRes, isLoading: categoriesLoading } =
     useGetCategoriesQuery({ page: 1, limit: 500 });
-
-  const { data: subcategoriesRes, isLoading: subcategoriesLoading } =
-    useGetSubcategoriesQuery({ page: 1, limit: 500 });
 
   const { data: brandsRes, isLoading: brandsLoading } = useGetBrandsQuery({
     page: 1,
@@ -62,54 +66,41 @@ const AddProduct = () => {
   });
 
   const categories: SelectOption[] = categoriesRes?.data ?? ([] as any);
-  const subcategories: (SelectOption & { categoryId?: string | null })[] =
-    subcategoriesRes?.data?.data ?? [];
   const brands: SelectOption[] = brandsRes?.data ?? [];
   const units: any[] = unitsRes?.data ?? ([] as any);
 
-  // -----------------------------
-  // Mutations
-  // -----------------------------
   const [createProduct, { isLoading: creating }] = useCreateProductMutation();
 
-  const [formData, setFormData] = useState({
-    name: "",
-    productCode: "",
-    barcode: "",
-    description: "",
-
-    categoryId: "",
-    subcategoryId: "",
-    brandId: "",
-    unitId: "",
-
-    costPrice: "",
-    sellPrice: "",
-    alertQuantity: "10",
-
-    openingStock: "",
-
-    imageFile: null as File | null,
-  });
-
-  // ✅ Filter subcategories based on categoryId
-  const filteredSubcategories = useMemo(() => {
-    if (!formData.categoryId) return [];
-    return subcategories.filter((s) => s.categoryId === formData.categoryId);
-  }, [subcategories, formData.categoryId]);
+  const [formData, setFormData] =
+    useState<ProductFormState>(initialProductFormData);
+  const selectedUnit = units.find((unit) => unit.id === formData.unitId);
+  const subUnitFactor = selectedUnit?.conversion?.factor
+    ? Number(selectedUnit.conversion.factor)
+    : 0;
+  const shouldUseSubUnit =
+    formData.subUnitValue === "related" && subUnitFactor > 0;
 
   const handleChange = (field: keyof typeof formData, value: any) => {
     if (field === "categoryId") {
       setFormData((prev) => ({
         ...prev,
         categoryId: value,
-        subcategoryId: "", // reset subcategory
       }));
       return;
     }
 
     if (field === "imageFile") {
       setFormData((prev) => ({ ...prev, imageFile: value as File | null }));
+      return;
+    }
+
+    if (field === "unitId") {
+      setFormData((prev) => ({
+        ...prev,
+        unitId: value,
+        subUnitValue: "main",
+        openingStockSub: "",
+      }));
       return;
     }
 
@@ -145,10 +136,16 @@ const AddProduct = () => {
       //   imageUrl = uploadRes.data.url;
       // }
 
+      // Only convert opening stock when the user explicitly selects a sub unit.
+      const openingStock =
+        shouldUseSubUnit
+          ? toNum(formData.openingStockMain) * subUnitFactor +
+            toNum(formData.openingStockSub)
+          : toNum(formData.openingStockMain);
+
       const payload = {
         name: formData.name.trim(),
-        productCode: formData.productCode.trim(),
-        barcode: formData.barcode.trim() ? formData.barcode.trim() : undefined,
+        productCode: formData.productCode.trim() || undefined,
         description: formData.description || undefined,
 
         costPrice: toNum(formData.costPrice),
@@ -159,15 +156,12 @@ const AddProduct = () => {
         ),
 
         categoryId: formData.categoryId || undefined,
-        subcategoryId: formData.subcategoryId || undefined,
         brandId: formData.brandId || undefined,
         unitId: formData.unitId || undefined,
-        openingStock: parseInt(formData.openingStock || "0", 10) || 0,
-
-        // image: imageUrl, // optional
+        openingStock: Math.max(0, Math.floor(openingStock)),
       };
 
-      const created = await createProduct(payload as any).unwrap();
+      await createProduct(payload as any).unwrap();
 
       // ✅ Optional: opening stock -> stock ledger entry
       // const openingQty = parseInt(formData.openingStock || "0", 10) || 0;
@@ -179,6 +173,7 @@ const AddProduct = () => {
       //   }).unwrap();
       // }
       toast.success("Product Added");
+      setFormData(initialProductFormData);
 
       // navigate("/products");
     } catch (err: any) {
@@ -197,19 +192,6 @@ const AddProduct = () => {
     setFormData((prev) => ({
       ...prev,
       categoryId: category.id,
-      subcategoryId: "",
-    }));
-  };
-
-  const handleSubcategoryAdded = (subcategory: {
-    id: string;
-    name: string;
-    categoryId: string;
-  }) => {
-    setFormData((prev) => ({
-      ...prev,
-      categoryId: subcategory.categoryId || prev.categoryId,
-      subcategoryId: subcategory.id,
     }));
   };
 
@@ -218,28 +200,11 @@ const AddProduct = () => {
   };
 
   const isAnyLoading =
-    categoriesLoading || subcategoriesLoading || brandsLoading || unitsLoading;
+    categoriesLoading || brandsLoading || unitsLoading;
 
   return (
     <DashboardLayout title="New Product">
       <div className="space-y-6">
-        <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-primary">Inventory</p>
-              <h1 className="mt-1 text-3xl font-bold text-foreground">
-                Add product
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                Create a product with pricing, unit, category, brand, and opening stock.
-              </p>
-            </div>
-            <Button variant="outline" onClick={() => navigate("/products")}>
-              Back to Products
-            </Button>
-          </div>
-        </section>
-
       <Tabs defaultValue="add" className="w-full">
         <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start h-auto p-0 mb-6">
           <TabsTrigger
@@ -279,276 +244,16 @@ const AddProduct = () => {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Product Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="name">
-                    Product Name<span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    placeholder="Enter Product Name.."
-                    value={formData.name}
-                    onChange={(e) => handleChange("name", e.target.value)}
-                    required
-                  />
-                </div>
-
-                {/* Product Code */}
-                <div className="space-y-2">
-                  <Label htmlFor="productCode">
-                    Product Code<span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="productCode"
-                    placeholder="Enter Product Code.."
-                    value={formData.productCode}
-                    onChange={(e) =>
-                      handleChange("productCode", e.target.value)
-                    }
-                    required
-                  />
-                </div>
-
-                {/* Barcode */}
-                <div className="space-y-2">
-                  <Label htmlFor="barcode">Barcode</Label>
-                  <Input
-                    id="barcode"
-                    placeholder="Enter barcode (optional)"
-                    value={formData.barcode}
-                    onChange={(e) => handleChange("barcode", e.target.value)}
-                  />
-                </div>
-
-                {/* Category */}
-                <div className="space-y-2">
-                  <Label htmlFor="categoryId">
-                    Category<span className="text-destructive">*</span>
-                  </Label>
-                  <div className="flex gap-3">
-                    <Select
-                      value={formData.categoryId}
-                      onValueChange={(value) =>
-                        handleChange("categoryId", value)
-                      }
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select Category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="text-primary border-primary hover:bg-primary/10"
-                      onClick={() => setShowCategoryModal(true)}
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Category
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Subcategory */}
-                <div className="space-y-2">
-                  <Label htmlFor="subcategoryId">Subcategory</Label>
-                  <div className="flex gap-3">
-                    <Select
-                      value={formData.subcategoryId}
-                      onValueChange={(value) =>
-                        handleChange("subcategoryId", value)
-                      }
-                      disabled={!formData.categoryId}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue
-                          placeholder={
-                            formData.categoryId
-                              ? "Select Subcategory"
-                              : "Select category first"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filteredSubcategories.length > 0 ? (
-                          filteredSubcategories.map((sub) => (
-                            <SelectItem key={sub.id} value={sub.id}>
-                              {sub.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="none" disabled>
-                            No subcategories found
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="text-primary border-primary hover:bg-primary/10"
-                      onClick={() => setShowSubcategoryModal(true)}
-                      disabled={!formData.categoryId}
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Subcategory
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Brand */}
-                <div className="space-y-2">
-                  <Label htmlFor="brandId">Brand</Label>
-                  <div className="flex gap-3">
-                    <Select
-                      value={formData.brandId}
-                      onValueChange={(value) => handleChange("brandId", value)}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select Brand" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {brands.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>
-                            {b.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="text-primary border-primary hover:bg-primary/10"
-                      onClick={() => setShowBrandModal(true)}
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Brand
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Unit */}
-                <div className="space-y-2">
-                  <Label htmlFor="unitId">Unit</Label>
-                  <Select
-                    value={formData.unitId}
-                    onValueChange={(value) => handleChange("unitId", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {units.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Opening Stock (Optional) */}
-                <div className="space-y-2">
-                  <Label htmlFor="openingStock">Opening Stock (Optional)</Label>
-                  <Input
-                    id="openingStock"
-                    type="number"
-                    min={0}
-                    placeholder="0"
-                    value={formData.openingStock}
-                    onChange={(e) =>
-                      handleChange("openingStock", e.target.value)
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Opening stock দিতে চাইলে backend এ stockLedger entry লাগবে।
-                  </p>
-                </div>
-
-                {/* Sell Price */}
-                <div className="space-y-2">
-                  <Label htmlFor="sellPrice">
-                    Sell Price<span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="sellPrice"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    placeholder="Enter sell price.."
-                    value={formData.sellPrice}
-                    onChange={(e) => handleChange("sellPrice", e.target.value)}
-                    required
-                  />
-                </div>
-
-                {/* Cost Price */}
-                <div className="space-y-2">
-                  <Label htmlFor="costPrice">
-                    Cost Price<span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="costPrice"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    placeholder="Enter cost price.."
-                    value={formData.costPrice}
-                    onChange={(e) => handleChange("costPrice", e.target.value)}
-                    required
-                  />
-                </div>
-
-                {/* Alert Quantity */}
-                <div className="space-y-2">
-                  <Label htmlFor="alertQuantity">Alert Quantity</Label>
-                  <Input
-                    id="alertQuantity"
-                    type="number"
-                    min={0}
-                    placeholder="10"
-                    value={formData.alertQuantity}
-                    onChange={(e) =>
-                      handleChange("alertQuantity", e.target.value)
-                    }
-                  />
-                </div>
-
-                {/* Description */}
-                <div className="space-y-2">
-                  <Label htmlFor="description">Product Details</Label>
-                  <RichTextEditor
-                    value={formData.description}
-                    onChange={(value) => handleChange("description", value)}
-                    placeholder="Enter product details..."
-                  />
-                </div>
-
-                {/* Image */}
-                <div className="space-y-2">
-                  <Label htmlFor="imageFile">Product Image</Label>
-                  <Input
-                    id="imageFile"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) =>
-                      handleChange("imageFile", e.target.files?.[0] || null)
-                    }
-                    className="cursor-pointer"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Image upload endpoint থাকলে upload করে URL সেট করুন।
-                  </p>
-                </div>
+                <ProductFormFields
+                  formData={formData}
+                  categories={categories}
+                  brands={brands}
+                  units={units}
+                  showOpeningStock
+                  onChange={handleChange}
+                  onAddCategory={() => setShowCategoryModal(true)}
+                  onAddBrand={() => setShowBrandModal(true)}
+                />
 
                 {/* Save */}
                 <div className="flex justify-end gap-3 pt-4">
@@ -572,13 +277,6 @@ const AddProduct = () => {
         open={showCategoryModal}
         onOpenChange={setShowCategoryModal}
         onCategoryAdded={handleCategoryAdded as any}
-      />
-      <AddSubcategoryModal
-        open={showSubcategoryModal}
-        onOpenChange={setShowSubcategoryModal}
-        categories={categories.map((c) => ({ value: c.id, label: c.name }))}
-        selectedCategory={formData.categoryId}
-        onSubcategoryAdded={handleSubcategoryAdded as any}
       />
       <AddBrandModal
         open={showBrandModal}

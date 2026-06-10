@@ -14,13 +14,12 @@ import { Save } from "lucide-react";
 interface AddBrandModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onBrandAdded?: (brand: { name: string; code: string }) => void;
+  onBrandAdded?: (brand: { name: string }) => void;
 }
 
 const AddBrandModal = ({ open, onOpenChange, onBrandAdded }: AddBrandModalProps) => {
   const { toast } = useToast();
   const [brandName, setBrandName] = useState("");
-  const [brandCode, setBrandCode] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,9 +38,8 @@ const AddBrandModal = ({ open, onOpenChange, onBrandAdded }: AddBrandModalProps)
       description: `${brandName} has been added successfully.`,
     });
 
-    onBrandAdded?.({ name: brandName, code: brandCode });
+    onBrandAdded?.({ name: brandName });
     setBrandName("");
-    setBrandCode("");
     onOpenChange(false);
   };
 
@@ -62,15 +60,6 @@ const AddBrandModal = ({ open, onOpenChange, onBrandAdded }: AddBrandModalProps)
               value={brandName}
               onChange={(e) => setBrandName(e.target.value)}
               required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="brandCode">Brand Code</Label>
-            <Input
-              id="brandCode"
-              placeholder="Enter Brand Code.."
-              value={brandCode}
-              onChange={(e) => setBrandCode(e.target.value)}
             />
           </div>
           <div className="flex justify-end gap-3 pt-2">

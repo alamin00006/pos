@@ -71,7 +71,7 @@ export type Product = {
   name: string;
   description?: string | null;
 
-  productCode: string;
+  productCode?: string;
   barcode?: string | null;
 
   categoryId?: string | null;

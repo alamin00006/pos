@@ -41,12 +41,12 @@ import {
   RotateCcw,
   Eye,
   Settings,
-  Copy,
   Trash2,
   Printer,
   ImageIcon,
   Package,
-  Plus,
+  Barcode,
+  QrCode,
 } from "lucide-react";
 
 //  RTK hooks
@@ -58,6 +58,15 @@ import {
 import type { Product, ProductListQuery } from "@/types/product";
 import toast from "react-hot-toast";
 import ProductDetailsModal from "./ProductDetailsModal";
+
+const getProductCode = (product: any) =>
+  String(product?.productCode ?? product?.product_code ?? product?.code ?? "");
+
+const getProductDetails = (product: any) =>
+  String(product?.description ?? product?.details ?? "").replace(/<[^>]*>/g, "");
+
+const getProductCost = (product: any) =>
+  Number(product?.costPrice ?? product?.cost ?? product?.buyPrice ?? 0);
 
 const Products = () => {
   const navigate = useNavigate();
@@ -170,24 +179,6 @@ const Products = () => {
   return (
     <DashboardLayout title="Products">
       <div className="space-y-6">
-        <section className="rounded-lg border border-border bg-card p-6 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-primary">Inventory</p>
-              <h1 className="mt-1 text-3xl font-bold text-foreground">
-                Product catalog
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                Manage products, pricing, categories, brands, and stock visibility.
-              </p>
-            </div>
-            <Button onClick={() => navigate("/products/add")} className="w-fit gap-2">
-              <Plus className="h-4 w-4" />
-              Add Product
-            </Button>
-          </div>
-        </section>
-
       <Tabs defaultValue="products" className="w-full">
         <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start h-auto p-0 mb-6">
           <TabsTrigger
@@ -409,7 +400,7 @@ const Products = () => {
                           </TableCell>
 
                           <TableCell className="text-primary">
-                            {product.code ?? product.product_code ?? "-"}
+                            {getProductCode(product) || "-"}
                           </TableCell>
                           <TableCell>{product.name}</TableCell>
                           <TableCell>
@@ -425,13 +416,13 @@ const Products = () => {
                             Tk
                           </TableCell>
                           <TableCell>
-                            {Number(
-                              product.cost ?? product.buyPrice ?? 0,
-                            ).toFixed(2)}{" "}
+                            {getProductCost(product).toFixed(2)}{" "}
                             Tk
                           </TableCell>
 
-                          <TableCell>{product.details ?? ""}</TableCell>
+                          <TableCell className="max-w-[220px] truncate">
+                            {getProductDetails(product) || "-"}
+                          </TableCell>
 
                           <TableCell>
                             <div className="flex items-center justify-center gap-1">
@@ -467,6 +458,30 @@ const Products = () => {
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
+
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                title="Barcode"
+                                onClick={() =>
+                                  navigate(`/products/barcode/${product.id}`)
+                                }
+                              >
+                                <Barcode className="w-4 h-4" />
+                              </Button>
+
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                title="QR Code"
+                                onClick={() =>
+                                  navigate(`/products/qr/${product.id}`)
+                                }
+                              >
+                                <QrCode className="w-4 h-4" />
+                              </Button>
 
                               <Button
                                 variant="outline"

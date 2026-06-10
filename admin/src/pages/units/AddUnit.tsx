@@ -24,7 +24,7 @@ type FormState = {
   name: string;
   shortName: string;
   relatedToId: string; // ✅ store id
-  sign: "*" | "/" | "";
+  sign: "*" | "/";
   factor: string; // keep as string for input
 };
 
@@ -88,12 +88,8 @@ const AddUnit = () => {
 
     // ✅ conversion validation
     if (hasConversion) {
-      if (!formData.sign) {
-        toast.error("Please select related sign");
-        return;
-      }
       if (!formData.factor || Number(formData.factor) <= 0) {
-        toast.error("Please enter valid factor (Related By)");
+        toast.error("Please enter valid sub unit quantity");
         return;
       }
     }
@@ -107,7 +103,7 @@ const AddUnit = () => {
       // ✅ send conversion only if selected
       if (hasConversion) {
         payload.relatedToId = formData.relatedToId;
-        payload.sign = formData.sign || "*";
+        payload.sign = "*";
         payload.factor = formData.factor; // backend Prisma Decimal accepts string
       }
 
@@ -135,11 +131,11 @@ const AddUnit = () => {
               {/* Unit Name */}
               <div className="space-y-2">
                 <Label htmlFor="name">
-                  Unit Name <span className="text-destructive">*</span>
+                  Main Unit <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Dozen, Kg, Litre"
+                  placeholder="e.g., Litre, Dozen, Kilogram"
                   value={formData.name}
                   onChange={(e) =>
                     setFormData((p) => ({ ...p, name: e.target.value }))
@@ -149,10 +145,10 @@ const AddUnit = () => {
 
               {/* Short Name */}
               <div className="space-y-2">
-                <Label htmlFor="shortName">Short Name (Optional)</Label>
+                <Label htmlFor="shortName">Main Unit Short Name (Optional)</Label>
                 <Input
                   id="shortName"
-                  placeholder="e.g., pc, kg, L"
+                  placeholder="e.g., L, dz, kg"
                   value={formData.shortName}
                   onChange={(e) =>
                     setFormData((p) => ({ ...p, shortName: e.target.value }))
@@ -160,9 +156,9 @@ const AddUnit = () => {
                 />
               </div>
 
-              {/* Related To */}
+              {/* Sub Unit */}
               <div className="space-y-2">
-                <Label htmlFor="relatedTo">Related To (Optional)</Label>
+                <Label htmlFor="relatedTo">Sub Unit (Optional)</Label>
                 <Select
                   value={formData.relatedToId}
                   onValueChange={(value) =>
@@ -177,7 +173,7 @@ const AddUnit = () => {
                   <SelectTrigger>
                     <SelectValue
                       placeholder={
-                        unitsLoading ? "Loading..." : "Select base unit"
+                        unitsLoading ? "Loading..." : "Select sub unit"
                       }
                     />
                   </SelectTrigger>
@@ -192,9 +188,9 @@ const AddUnit = () => {
                 </Select>
               </div>
 
-              {/* Related Sign */}
+              {/* Conversion Sign */}
               <div className="space-y-2">
-                <Label htmlFor="sign">Related Sign</Label>
+                <Label htmlFor="sign">Conversion Sign</Label>
                 <Select
                   value={formData.sign}
                   onValueChange={(value) =>
@@ -212,19 +208,19 @@ const AddUnit = () => {
                 </Select>
                 {!hasConversion ? (
                   <p className="text-xs text-muted-foreground">
-                    Select “Related To” first
+                    Select a sub unit first
                   </p>
                 ) : null}
               </div>
 
               {/* Factor */}
               <div className="space-y-2">
-                <Label htmlFor="factor">Related By (Factor)</Label>
+                <Label htmlFor="factor">Sub Unit Quantity</Label>
                 <Input
                   id="factor"
                   type="number"
                   min={0}
-                  placeholder="e.g., 12, 1000"
+                  placeholder="e.g., 1000 for Litre to ml, 12 for Dozen to pc"
                   value={formData.factor}
                   onChange={(e) =>
                     setFormData((p) => ({ ...p, factor: e.target.value }))
@@ -240,9 +236,8 @@ const AddUnit = () => {
                 <p className="text-sm text-muted-foreground">
                   Result:{" "}
                   <span className="font-medium text-foreground">
-                    {formData.name || "Unit"} = 1{" "}
-                    {relatedToUnit?.shortName ?? relatedToUnit?.name ?? "base"}{" "}
-                    {formData.sign} {formData.factor}
+                    1 {formData.name || "main unit"} = {formData.factor}{" "}
+                    {relatedToUnit?.shortName ?? relatedToUnit?.name ?? "sub unit"}
                   </span>
                 </p>
               </div>

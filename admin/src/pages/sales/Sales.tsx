@@ -125,7 +125,7 @@ const toNumber = (value: unknown) => {
   return Number.isFinite(numberValue) ? numberValue : 0;
 };
 
-const formatMoney = (value: unknown) => `৳${toNumber(value).toLocaleString()}`;
+const formatMoney = (value: unknown) => `Tk ${toNumber(value).toLocaleString()}`;
 
 const normalizeSaleItem = (item: any): SaleItem => ({
   productId: item.productId ?? item.product?.id ?? "",
@@ -161,7 +161,9 @@ const normalizeSale = (sale: any): Sale => {
     status:
       sale.status === "REFUNDED"
         ? "REFUNDED"
-        : sale.paymentStatus ?? (due <= 0 ? "PAID" : paid > 0 ? "PARTIAL" : "UNPAID"),
+        : sale.paymentStatus === "PENDING"
+          ? "UNPAID"
+          : sale.paymentStatus ?? (due <= 0 ? "PAID" : paid > 0 ? "PARTIAL" : "UNPAID"),
     payments: sale.payments ?? [],
   };
 };
@@ -301,12 +303,13 @@ const Sales = () => {
   const queryParams = {
     page,
     limit,
-    search: billNumber || undefined,
+    invoiceNo: billNumber || undefined,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
     customerId: customerId !== "all" ? customerId : undefined,
     productId: productId !== "all" ? productId : undefined,
-    status: status !== "all" ? status : undefined,
+    paymentStatus:
+      status !== "all" ? (status === "UNPAID" ? "PENDING" : status) : undefined,
   };
 
   // Fetch data
@@ -324,7 +327,7 @@ const Sales = () => {
 
   const sales = (salesData?.data || []).map(normalizeSale);
   const total = salesData?.meta?.total || 0;
-  const totalPage = salesData?.meta?.totalPage || 1;
+  const totalPage = salesData?.meta?.totalPages || 1;
   const customers = customersData?.data || [];
   const products = productsData?.data || [];
 
@@ -332,22 +335,22 @@ const Sales = () => {
   const todayStats = [
     {
       label: "Sold Today:",
-      value: `${todaySalesData?.totalAmount?.toLocaleString() || 0} Tk`,
+      value: `${todaySalesData?.data?.totalSold?.toLocaleString() || todaySalesData?.totalSold?.toLocaleString() || 0} Tk`,
       bg: "bg-primary",
     },
     {
       label: "Today Received:",
-      value: `${todaySalesData?.totalPaid?.toLocaleString() || 0} Tk`,
+      value: `${todaySalesData?.data?.totalReceived?.toLocaleString() || todaySalesData?.totalReceived?.toLocaleString() || 0} Tk`,
       bg: "bg-primary",
     },
     {
       label: "Today Profit:",
-      value: `${todaySalesData?.totalProfit?.toLocaleString() || 0} Tk`,
+      value: `${reportData?.data?.summary?.totalProfit?.toLocaleString() || reportData?.summary?.totalProfit?.toLocaleString() || 0} Tk`,
       bg: "bg-primary",
     },
     {
       label: "Total Sold:",
-      value: `${reportData?.totalAmount?.toLocaleString() || 0} Tk`,
+      value: `${reportData?.data?.summary?.totalSales?.toLocaleString() || reportData?.summary?.totalSales?.toLocaleString() || 0} Tk`,
       bg: "bg-primary",
     },
   ];

@@ -19,9 +19,9 @@ export const productsApi = baseApi.injectEndpoints({
         params,
       }),
       providesTags: (result) =>
-        result?.data?.data
+        result?.data
           ? [
-              ...result.data.data.map((p) => ({
+              ...result.data.map((p) => ({
                 type: "Product" as const,
                 id: p.id,
               })),

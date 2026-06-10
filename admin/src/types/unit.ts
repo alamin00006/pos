@@ -52,6 +52,9 @@ export type Unit = {
 export type CreateUnitDto = {
   name: string;
   shortName?: string;
+  relatedToId?: string;
+  sign?: "*" | "/";
+  factor?: string | number;
 };
 
 export type UpdateUnitDto = Partial<CreateUnitDto>;

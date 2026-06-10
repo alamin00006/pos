@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback, memo } from "react";
 import { useNavigate } from "@/lib/router";
 
 import {
@@ -8,48 +8,95 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { X } from "lucide-react";
+import { X, Package } from "lucide-react";
 
 import { useGetProductQuery } from "@/redux/api/productsApi";
 
-type Props = {
+// ==================== Types ====================
+type Product = {
+  id?: string;
+  name?: string;
+  productCode?: string;
+  product_code?: string;
+  code?: string;
+  category?: { name?: string } | string;
+  brand?: { name?: string } | string;
+  sellPrice?: number;
+  price?: number;
+  costPrice?: number;
+  cost?: number;
+  stock?: number | string;
+  description?: string;
+  details?: string;
+  image?: string;
+  imageUrl?: string;
+  thumbnail?: string;
+  photo?: string;
+};
+
+type ProductDetailsModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   productId: string | null;
 };
 
-function text(v: any) {
-  if (v === null || v === undefined) return "";
-  return String(v);
-}
+// ==================== Utility Functions ====================
+const formatCurrency = (value: unknown): string => {
+  const num = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(num) || num === 0) return "";
+  return num.toFixed(2);
+};
 
-function money(v: any) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "";
-  return n.toFixed(2);
-}
+const formatText = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+  return String(value);
+};
 
-function resolveImage(product: any) {
+const resolveImage = (product: Product | undefined): string => {
+  if (!product) return "";
   return (
-    product?.image ||
-    product?.imageUrl ||
-    product?.thumbnail ||
-    product?.photo ||
+    product.image ||
+    product.imageUrl ||
+    product.thumbnail ||
+    product.photo ||
     ""
   );
-}
+};
 
+const getNestedValue = (value: unknown): string => {
+  if (!value) return "";
+  if (typeof value === "object" && "name" in value) {
+    return formatText(value.name);
+  }
+  return formatText(value);
+};
+
+// ==================== Components ====================
+const TableRow = memo(
+  ({ label, value }: { label: string; value: React.ReactNode }) => (
+    <div
+      className="grid grid-cols-2 border-b last:border-b-0"
+      style={{ borderColor: "#e5e7eb" }}
+    >
+      <div className="px-5 py-4 text-sm text-muted-foreground">{label}</div>
+      <div className="px-5 py-4 text-sm text-foreground">{value}</div>
+    </div>
+  ),
+);
+
+TableRow.displayName = "TableRow";
+
+// ==================== Main Component ====================
 export default function ProductDetailsModal({
   open,
   onOpenChange,
   productId,
-}: Props) {
+}: ProductDetailsModalProps) {
   const navigate = useNavigate();
 
   const {
@@ -59,43 +106,78 @@ export default function ProductDetailsModal({
     error,
   } = useGetProductQuery(productId as string, {
     skip: !open || !productId,
-  }) as any;
+    refetchOnMountOrArgChange: false,
+  });
 
-  const product = res?.data;
+  const product = res?.data as Product | undefined;
 
+  // Memoized view model
   const vm = useMemo(() => {
-    const p = product;
+    if (!product) {
+      return {
+        title: "Product",
+        code: "",
+        category: "",
+        brand: "",
+        price: "",
+        cost: "",
+        stock: "",
+        details: "",
+        image: "",
+      };
+    }
+
+    const price = Number(product.sellPrice ?? product.price ?? 0);
+    const cost = Number(product.costPrice ?? product.cost ?? 0);
 
     return {
-      title: text(p?.name) || "Product",
-      code: text(p?.productCode || p?.product_code || p?.code),
-      category: text(p?.category?.name || p?.category),
-      brand: text(p?.brand?.name || p?.brand),
-      price: money(p?.sellPrice ?? p?.price),
-      cost: money(p?.costPrice ?? p?.cost),
-      stock: text(p?.stock ?? ""),
-      details: text(p?.description ?? p?.details ?? ""),
-      image: resolveImage(p),
+      title: formatText(product.name) || "Product",
+      code: formatText(
+        product.productCode || product.product_code || product.code,
+      ),
+      category: getNestedValue(product.category),
+      brand: getNestedValue(product.brand),
+      price: price ? formatCurrency(price) : "",
+      cost: cost ? formatCurrency(cost) : "",
+      stock: formatText(product.stock ?? ""),
+      details: formatText(product.description ?? product.details),
+      image: resolveImage(product),
     };
   }, [product]);
 
-  const Row = ({ label, value }: { label: string; value: React.ReactNode }) => (
-    <div className="grid grid-cols-2 border-b last:border-b-0">
-      <div className="px-5 py-4 text-sm text-muted-foreground">{label}</div>
-      <div className="px-5 py-4 text-sm text-foreground">{value}</div>
-    </div>
+  // Memoized callbacks
+  const handleOpenChange = useCallback(
+    (newOpen: boolean) => {
+      onOpenChange(newOpen);
+    },
+    [onOpenChange],
   );
 
+  const handleEdit = useCallback(() => {
+    if (productId) {
+      onOpenChange(false);
+      navigate(`/products/${productId}/edit`);
+    }
+  }, [productId, navigate, onOpenChange]);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-5xl p-0 gap-0">
-        {/* Header like screenshot (title left + X right) */}
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4">
           <DialogHeader className="p-0 space-y-0">
             <DialogTitle className="text-lg font-medium">
               {isLoading ? "Loading..." : vm.title}
             </DialogTitle>
           </DialogHeader>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleOpenChange(false)}
+            className="h-8 w-8"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
 
         <Separator />
@@ -110,15 +192,15 @@ export default function ProductDetailsModal({
             <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8">
               {/* Left image box */}
               <div className="flex items-start justify-center">
-                <div className="w-[180px] h-[180px] border bg-background flex items-center justify-center overflow-hidden">
+                <div className="w-[180px] h-[180px] border bg-background flex items-center justify-center overflow-hidden rounded-md">
                   {isLoading ? (
                     <Skeleton className="w-full h-full" />
                   ) : vm.image ? (
-                    // no next/image to keep it simple inside modal
                     <img
                       src={vm.image}
                       alt={vm.title}
                       className="w-full h-full object-contain"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
@@ -128,8 +210,11 @@ export default function ProductDetailsModal({
                 </div>
               </div>
 
-              {/* Right table */}
-              <div className="border rounded-sm overflow-hidden">
+              {/* Right table with lighter borders */}
+              <div
+                className="border rounded-md overflow-hidden"
+                style={{ borderColor: "#e5e7eb" }}
+              >
                 {isLoading ? (
                   <div className="p-5 space-y-3">
                     <Skeleton className="h-5 w-2/3" />
@@ -139,13 +224,13 @@ export default function ProductDetailsModal({
                   </div>
                 ) : (
                   <>
-                    <Row label="Code" value={vm.code || "-"} />
-                    <Row label="Category" value={vm.category || "-"} />
-                    <Row label="Brand" value={vm.brand || "-"} />
-                    <Row label="Price" value={vm.price ? `${vm.price}` : "-"} />
-                    <Row label="Cost" value={vm.cost ? `${vm.cost}` : "-"} />
-                    <Row label="Stock" value={vm.stock || "0"} />
-                    <Row
+                    <TableRow label="Code" value={vm.code || "-"} />
+                    <TableRow label="Category" value={vm.category || "-"} />
+                    <TableRow label="Brand" value={vm.brand || "-"} />
+                    <TableRow label="Price" value={vm.price || "-"} />
+                    <TableRow label="Cost" value={vm.cost || "-"} />
+                    <TableRow label="Stock" value={vm.stock || "0"} />
+                    <TableRow
                       label="Details"
                       value={
                         vm.details ? (
@@ -164,11 +249,11 @@ export default function ProductDetailsModal({
           )}
         </div>
 
-        {isFetching ? (
+        {isFetching && (
           <div className="absolute right-6 top-5 text-xs text-muted-foreground">
             Loading...
           </div>
-        ) : null}
+        )}
       </DialogContent>
     </Dialog>
   );

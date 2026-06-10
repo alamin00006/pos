@@ -39,7 +39,13 @@ export default function ProtectedRoute({
     if (!hasRequiredPermission) {
       router.replace("/unauthorized");
     }
-  }, [isAuthenticated, hasRequiredPermission, isRehydrated, router]);
+  }, [
+    accessToken,
+    hasRequiredPermission,
+    isAuthenticated,
+    isRehydrated,
+    router,
+  ]);
 
   if (!isRehydrated) return null;
   if (!isAuthenticated) return null;

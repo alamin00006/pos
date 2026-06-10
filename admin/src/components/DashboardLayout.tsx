@@ -7,8 +7,7 @@ import { useNavigate, useLocation } from "@/lib/router";
 
 import { useAppDispatch, useAppSelector } from "@/hooks/reduxHook";
 import { logout as logoutAction } from "@/redux/authSlice";
-import { authKey } from "@/constants/authKey";
-import { removeFromLocalStorage } from "@/lib/utils/local-storage";
+import { clearStoredAuthSession } from "@/lib/auth/session";
 import {
   AppNotification,
   useGetNotificationsQuery,
@@ -154,8 +153,7 @@ const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
   const notifications = notificationsData?.notifications ?? [];
   const unreadCount = notificationsData?.unreadCount ?? notifications.length;
   const handleLogout = () => {
-    removeFromLocalStorage(authKey);
-    removeFromLocalStorage("selectedBranchId");
+    clearStoredAuthSession();
     dispatch(logoutAction());
     navigate("/");
   };

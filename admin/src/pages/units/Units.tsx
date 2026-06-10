@@ -144,7 +144,7 @@ const Units = () => {
     const c = u.conversion;
     if (!c?.relatedToId || !c?.factor) return "-";
     const base = c.relatedTo?.shortName || c.relatedTo?.name || "-";
-    return `${u.name} = 1 ${base} ${c.sign ?? "*"} ${c.factor}`;
+    return `1 ${u.name} = ${c.factor} ${base}`;
   };
 
   return (
@@ -215,16 +215,16 @@ const Units = () => {
                     #
                   </TableHead>
                   <TableHead className="text-primary-foreground font-semibold">
-                    Name
+                    Main Unit
                   </TableHead>
                   <TableHead className="text-primary-foreground font-semibold">
-                    Related To
+                    Sub Unit
                   </TableHead>
                   <TableHead className="text-primary-foreground font-semibold">
-                    Related Sign
+                    Conversion
                   </TableHead>
                   <TableHead className="text-primary-foreground font-semibold">
-                    Related By
+                    Sub Unit Qty
                   </TableHead>
                   <TableHead className="text-primary-foreground font-semibold">
                     Result

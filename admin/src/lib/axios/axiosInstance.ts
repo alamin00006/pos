@@ -8,9 +8,14 @@ import axios, {
 import { authKey } from "@/constants/authKey";
 import {
   getFromLocalStorage,
-  removeFromLocalStorage,
 } from "@/lib/utils/local-storage";
 import { getBaseUrl } from "@/helpers/config/envConfig";
+import { expireAuthSession } from "@/lib/auth/session";
+import { refreshAccessToken } from "@/lib/auth/refresh";
+
+type RetriableAxiosRequestConfig = AxiosRequestConfig & {
+  _retry?: boolean;
+};
 
 const instance: AxiosInstance = axios.create({
   baseURL: getBaseUrl(),
@@ -48,13 +53,29 @@ instance.interceptors.request.use(
 ===================== */
 instance.interceptors.response.use(
   (response: AxiosResponse) => response,
-  (error) => {
-    if (error?.response?.status === 401) {
-      removeFromLocalStorage(authKey);
+  async (error) => {
+    const originalRequest = error?.config as RetriableAxiosRequestConfig;
+    const isUnauthorized = error?.response?.status === 401;
+    const requestUrl = originalRequest?.url || "";
+    const isAuthRequest =
+      requestUrl.includes("/auth/login") ||
+      requestUrl.includes("/auth/refresh") ||
+      requestUrl.includes("/auth/logout");
 
-      if (typeof window !== "undefined") {
-        window.location.href = "/";
+    if (isUnauthorized && originalRequest && !originalRequest._retry && !isAuthRequest) {
+      originalRequest._retry = true;
+      try {
+        const accessToken = await refreshAccessToken();
+        originalRequest.headers = {
+          ...originalRequest.headers,
+          Authorization: `Bearer ${accessToken}`,
+        };
+        return instance(originalRequest);
+      } catch {
+        expireAuthSession();
       }
+    } else if (isUnauthorized && !isAuthRequest) {
+      expireAuthSession();
     }
 
     return Promise.reject(error);

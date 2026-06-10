@@ -14,13 +14,12 @@ import { Save } from "lucide-react";
 interface AddCategoryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCategoryAdded?: (category: { name: string; code: string }) => void;
+  onCategoryAdded?: (category: { name: string }) => void;
 }
 
 const AddCategoryModal = ({ open, onOpenChange, onCategoryAdded }: AddCategoryModalProps) => {
   const { toast } = useToast();
   const [categoryName, setCategoryName] = useState("");
-  const [categoryCode, setCategoryCode] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,9 +38,8 @@ const AddCategoryModal = ({ open, onOpenChange, onCategoryAdded }: AddCategoryMo
       description: `${categoryName} has been added successfully.`,
     });
 
-    onCategoryAdded?.({ name: categoryName, code: categoryCode });
+    onCategoryAdded?.({ name: categoryName });
     setCategoryName("");
-    setCategoryCode("");
     onOpenChange(false);
   };
 
@@ -62,15 +60,6 @@ const AddCategoryModal = ({ open, onOpenChange, onCategoryAdded }: AddCategoryMo
               value={categoryName}
               onChange={(e) => setCategoryName(e.target.value)}
               required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="categoryCode">Category Code</Label>
-            <Input
-              id="categoryCode"
-              placeholder="Enter Category Code.."
-              value={categoryCode}
-              onChange={(e) => setCategoryCode(e.target.value)}
             />
           </div>
           <div className="flex justify-end gap-3 pt-2">
