@@ -6,8 +6,8 @@ export default function ProductBarcodePage() {
   return (
     <ProductLabelGeneratePage
       mode="barcode"
-      defaultQuantity="10"
-      defaultGeneratedCount={0}
+      defaultQuantity="1"
+      defaultGeneratedCount={1}
     />
   );
 }
