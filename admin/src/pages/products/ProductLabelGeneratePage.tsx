@@ -125,23 +125,6 @@ export default function ProductLabelGeneratePage({
   return (
     <DashboardLayout title={`Generate ${labelTitle}`}>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 rounded-md border bg-card p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold">Product Details</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Generate and print A4 {labelTitle.toLowerCase()} labels for this product.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate("/products")}>
-              Product List
-            </Button>
-            <Button variant="outline" onClick={() => navigate(`/products/edit/${id}`)}>
-              Edit
-            </Button>
-          </div>
-        </div>
-
         {error ? (
           <Card>
             <CardContent className="p-6">
@@ -189,10 +172,18 @@ export default function ProductLabelGeneratePage({
                     at a time.
                   </p>
                 </div>
-                <Button variant="ghost" className="gap-2" onClick={handleReset}>
-                  <RefreshCw className="h-4 w-4" />
-                  Reset
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="ghost" className="gap-2" onClick={handleReset}>
+                    <RefreshCw className="h-4 w-4" />
+                    Reset
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate(`/products/edit/${id}`)}
+                  >
+                    Edit
+                  </Button>
+                </div>
               </div>
 
               <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
